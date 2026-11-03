@@ -1,9 +1,15 @@
 {
-  "version": 2,
   "features": [
     {
       "id": "leaderboard",
-      "module": "./features/leaderboard/feature.js?v=2",
+      "title": "Leaderboard",
+      "module": "./features/leaderboard/feature.js",
+      "requiresLogin": true
+    },
+    {
+      "id": "profile-typing",
+      "title": "Profile and Typing",
+      "module": "./features/profile/feature.js",
       "requiresLogin": true
     }
   ]
