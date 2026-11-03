@@ -26,7 +26,17 @@ header{padding:10px 14px;background:#171a21;border-bottom:1px solid #262a33;font
 .sys{align-self:center;font-size:12px;color:#888}
 #bar{display:flex;gap:8px;padding:10px;background:#171a21}
 #bar input{margin:0}
+#panel{display:none;position:fixed;inset:0;background:#0f1115;overflow:auto;padding:14px;z-index:10}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 0;border-bottom:1px solid #262a33}
+.row span{flex:1 1 100%}
+.row button{padding:6px 10px;font-size:13px;background:#2a2f3a}
+#adm{display:none;padding:4px 10px;font-size:12px;background:#2a2f3a;margin-right:6px}
+.del{background:none;font-size:12px;padding:0 4px;color:#888}
 </style>
+<script>
+window.addEventListener("error", function (e) { var x = document.getElementById("err"); if (x) x.textContent = "JS error: " + e.message; });
+setTimeout(function () { if (!window.__ok) { var x = document.getElementById("err"); if (x) x.textContent = "App load nahi hui: internet/adblock check karo ya page refresh karo"; } }, 15000);
+</script>
 </head>
 <body>
 <div id="join">
@@ -39,17 +49,35 @@ header{padding:10px 14px;background:#171a21;border-bottom:1px solid #262a33;font
 </div>
 <div id="app">
   <header>
-    <div id="top"><b>Dosto ka Chat</b><button id="out">Logout</button></div>
+    <div id="top"><b>Dosto ka Chat</b><span><button id="adm">Admin</button><button id="out">Logout</button></span></div>
     <div id="online"></div>
   </header>
   <div id="msgs"></div>
   <div id="bar"><input id="text" placeholder="Message likho..." autocomplete="off"><button id="send">Send</button></div>
 </div>
 
+<div id="panel">
+  <button id="pclose">Band karo</button>
+  <h3>Admin Panel</h3>
+  <div id="plist"></div>
+</div>
+
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, push, set, onValue, onChildAdded, onDisconnect, query, limitToLast, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+const B = "https://www.gstatic.com/firebasejs/10.12.2/";
+let initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut;
+let getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp;
+try {
+  const [a, b, c] = await Promise.all([import(B + "firebase-app.js"), import(B + "firebase-auth.js"), import(B + "firebase-database.js")]);
+  ({ initializeApp } = a);
+  ({ getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } = b);
+  ({ getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp } = c);
+  const need = { initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut, getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp };
+  const missing = Object.keys(need).filter(k => typeof need[k] !== "function");
+  if (missing.length) throw new Error("missing: " + missing.join(", "));
+} catch (e) {
+  document.getElementById("err").textContent = "Load error: " + (e && e.message ? e.message : e);
+  throw e;
+}
 
 // ====== YAHAN APNA FIREBASE CONFIG PASTE KARO ======
 const firebaseConfig = {
@@ -61,11 +89,12 @@ const firebaseConfig = {
 };
 // ===================================================
 
+const ADMIN_UID = "TkdZFaOuM8huIE3I5l6TSWHfHnY2";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app), db = getDatabase(app);
 const $ = id => document.getElementById(id);
 const HIST = "chat_history_v1";
-let me = null, signup = false, started = false, seen = new Set(), cache = [];
+let muteUntil = 0, users = {}, bans = {}, mutes = {}, me = null, signup = false, started = false, seen = new Set(), cache = [];
 
 $("swap").onclick = () => {
   signup = !signup;
@@ -110,6 +139,13 @@ onAuthStateChanged(auth, user => {
   const myRef = ref(db, "online/" + user.uid);
   set(myRef, user.displayName);
   onDisconnect(myRef).remove();
+  set(ref(db, "users/" + user.uid), user.displayName).catch(() => {});
+  onValue(ref(db, "bans/" + user.uid), s => {
+    if (s.exists()) document.body.innerHTML = '<div style="margin:auto;padding:24px;text-align:center"><h2>Tumhe ban kiya gaya hai</h2><p>Admin se baat karo.</p></div>';
+  });
+  onValue(ref(db, "mutes/" + user.uid), s => { muteUntil = s.val() || 0; refreshMute(); });
+  setInterval(refreshMute, 15000);
+  if (user.uid === ADMIN_UID) setupAdmin();
   try { cache = JSON.parse(localStorage.getItem(HIST) || "[]"); } catch { cache = []; }
   cache.forEach(m => { seen.add(m.k); draw(m); });
   push(ref(db, "messages"), { uid: user.uid, system: true, text: user.displayName + " online aaya", ts: serverTimestamp() });
@@ -117,7 +153,13 @@ onAuthStateChanged(auth, user => {
     const names = Object.values(s.val() || {});
     $("online").textContent = "● Online (" + names.length + "): " + names.join(", ");
   });
-  onChildAdded(query(ref(db, "messages"), limitToLast(100)), s => {
+  const q = query(ref(db, "messages"), limitToLast(100));
+  onChildRemoved(q, s => {
+    const e = $("msgs").querySelector('[data-k="' + s.key + '"]'); if (e) e.remove();
+    cache = cache.filter(x => x.k !== s.key);
+    try { localStorage.setItem(HIST, JSON.stringify(cache)); } catch {}
+  });
+  onChildAdded(q, s => {
     if (seen.has(s.key)) return;
     seen.add(s.key);
     const m = { k: s.key, ...s.val() };
@@ -129,12 +171,18 @@ onAuthStateChanged(auth, user => {
 
 function draw(m) {
   const d = document.createElement("div");
+  d.dataset.k = m.k;
   if (m.system) { d.className = "sys"; d.textContent = m.text; }
   else {
     d.className = "m" + (m.uid === me.uid ? " me" : "");
     const b = document.createElement("b"); b.textContent = m.user;
     const t = document.createElement("span"); t.textContent = m.text;
     d.append(b, t);
+  }
+  if (me.uid === ADMIN_UID) {
+    const x = document.createElement("button"); x.className = "del"; x.textContent = "🗑";
+    x.onclick = () => remove(ref(db, "messages/" + m.k));
+    d.appendChild(x);
   }
   const box = $("msgs"); box.appendChild(d); box.scrollTop = box.scrollHeight;
 }
@@ -145,7 +193,45 @@ function send() {
   push(ref(db, "messages"), { uid: me.uid, user: me.displayName, text: text.slice(0, 500), ts: serverTimestamp() });
   $("text").value = "";
 }
+window.__ok = true;
+document.getElementById("err").textContent = "";
 $("send").onclick = send;
+
+function refreshMute() {
+  const on = muteUntil > Date.now();
+  $("text").disabled = on; $("send").disabled = on;
+  $("text").placeholder = on ? "Tum mute ho (" + new Date(muteUntil).toLocaleTimeString() + " tak)" : "Message likho...";
+}
+
+function setupAdmin() {
+  $("adm").style.display = "inline-block";
+  $("adm").onclick = () => { $("panel").style.display = "block"; };
+  $("pclose").onclick = () => { $("panel").style.display = "none"; };
+  onValue(ref(db, "users"), s => { users = s.val() || {}; renderPanel(); });
+  onValue(ref(db, "bans"), s => { bans = s.val() || {}; renderPanel(); });
+  onValue(ref(db, "mutes"), s => { mutes = s.val() || {}; renderPanel(); });
+}
+
+function renderPanel() {
+  const box = $("plist"); box.textContent = "";
+  Object.entries(users).forEach(([uid, name]) => {
+    if (uid === ADMIN_UID) return;
+    const row = document.createElement("div"); row.className = "row";
+    const n = document.createElement("span");
+    n.textContent = name + (bans[uid] ? "  🚫 banned" : (mutes[uid] > Date.now() ? "  🔇 mute" : ""));
+    row.appendChild(n);
+    const add = (label, fn) => { const b = document.createElement("button"); b.textContent = label; b.onclick = fn; row.appendChild(b); };
+    add("Mute 10m", () => set(ref(db, "mutes/" + uid), Date.now() + 600000));
+    add("Mute 1h", () => set(ref(db, "mutes/" + uid), Date.now() + 3600000));
+    add("Unmute", () => remove(ref(db, "mutes/" + uid)));
+    add(bans[uid] ? "Unban" : "Ban", () => {
+      if (bans[uid]) remove(ref(db, "bans/" + uid));
+      else { set(ref(db, "bans/" + uid), true); remove(ref(db, "online/" + uid)); }
+    });
+    box.appendChild(row);
+  });
+  if (!box.children.length) box.textContent = "Abhi koi aur user nahi hai.";
+}
 $("text").onkeydown = e => { if (e.key === "Enter") send(); };
 </script>
 </body>
