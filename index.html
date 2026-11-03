@@ -1,244 +1,568 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dosto ka Chat</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,sans-serif;background:#0f1115;color:#e8e8ea;height:100dvh;display:flex;flex-direction:column}
-#join{margin:auto;text-align:center;padding:24px;width:min(360px,92%)}
-input{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:1px solid #333;background:#1b1e25;color:inherit;font-size:16px}
-button{padding:12px 18px;border:0;border-radius:10px;background:#4f7cff;color:#fff;font-size:16px;cursor:pointer}
-#join button{margin-top:12px;width:100%}
-#swap{background:none;color:#8fb0ff;font-size:14px;margin-top:4px}
-#err{color:#ff6b6b;min-height:20px;margin-top:8px;font-size:14px}
-#app{display:none;flex-direction:column;height:100%}
-header{padding:10px 14px;background:#171a21;border-bottom:1px solid #262a33;font-size:14px}
-#top{display:flex;justify-content:space-between;align-items:center}
-#out{padding:4px 10px;font-size:12px;background:#2a2f3a}
-#online{color:#6ee7a0;margin-top:4px;overflow-x:auto;white-space:nowrap}
-#msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
-.m{max-width:80%;padding:8px 12px;border-radius:12px;background:#1b1e25;word-wrap:break-word}
-.m b{display:block;font-size:12px;color:#8fb0ff;margin-bottom:2px}
-.m.me{align-self:flex-end;background:#2b4bb5}
-.m.me b{display:none}
-.sys{align-self:center;font-size:12px;color:#888}
-#bar{display:flex;gap:8px;padding:10px;background:#171a21}
-#bar input{margin:0}
-#panel{display:none;position:fixed;inset:0;background:#0f1115;overflow:auto;padding:14px;z-index:10}
-.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 0;border-bottom:1px solid #262a33}
-.row span{flex:1 1 100%}
-.row button{padding:6px 10px;font-size:13px;background:#2a2f3a}
-#adm{display:none;padding:4px 10px;font-size:12px;background:#2a2f3a;margin-right:6px}
-.del{background:none;font-size:12px;padding:0 4px;color:#888}
-</style>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script>
-window.addEventListener("error", function (e) { if (!e.message || e.message === "Script error.") return; var x = document.getElementById("err"); if (x) x.textContent = "JS error: " + e.message; });
-setTimeout(function () { if (!window.__ok) { var x = document.getElementById("err"); if (x) x.textContent = "App load nahi hui: internet/adblock check karo ya page refresh karo"; } }, 15000);
-</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101522">
+  <title>Dosto ka Chat</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0d111b;--panel:#171e2c;--line:#29364c;--blue:#557cff;--text:#edf2ff;--muted:#9aa8c2;--green:#57d69b;--red:#ef7180;--gold:#ffd27a}
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+    body{min-height:100dvh}
+    button,input{font:inherit}
+    button{border:0;border-radius:10px;padding:11px 14px;background:var(--blue);color:#fff;font-weight:650;cursor:pointer}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    input{width:100%;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0f1522;color:var(--text);font-size:16px;outline:none}
+    input:focus{border-color:var(--blue)}
+    #join{width:min(390px,92%);margin:11vh auto 0;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 60px #0005;text-align:center}
+    .logo{font-size:25px;font-weight:850;margin-bottom:4px}
+    .sub{font-size:13px;color:var(--muted);margin:0 0 18px}
+    #join h2{font-size:19px;margin:10px 0}
+    #join input{margin:6px 0}
+    #join #go,#join #swap{width:100%;margin-top:10px}
+    #swap{background:transparent;color:#a9bdff;font-weight:500}
+    #err{min-height:22px;margin-top:8px;color:#ff8290;font-size:13px;overflow-wrap:anywhere}
+    #app{display:none;flex-direction:column;height:100dvh;max-width:1000px;margin:0 auto;background:#111725;min-height:0}
+    header{padding:12px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+    #top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    #brand{font-size:18px;font-weight:850}
+    #welcome{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+    .head-actions{display:flex;gap:7px;align-items:center}
+    #out{padding:8px 11px;font-size:12px;background:#303b50}
+    #adminOpen{display:none;padding:8px 11px;font-size:12px;background:#805cce}
+    #online{margin-top:8px;color:var(--green);font-size:12px;white-space:nowrap;overflow-x:auto}
+    #connection{font-size:11px;color:var(--muted);margin-top:3px;min-height:14px}
+    #notice{display:none;padding:9px 12px;background:#382c17;color:var(--gold);font-size:13px;text-align:center}
+    #msgs{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:9px;overscroll-behavior:contain}
+    .msg{position:relative;max-width:min(84%,560px);padding:9px 12px;border:1px solid var(--line);border-radius:14px;background:#1a2435;overflow-wrap:anywhere;white-space:pre-wrap}
+    .msg.me{align-self:flex-end;background:#29458a;border-color:#3b5fb3}
+    .msg b{display:block;color:#a9c2ff;font-size:12px;margin:0 44px 3px 0}
+    .msg.me b{display:none}
+    .msg .stamp{font-size:10px;color:#b6c2d8;margin-left:7px;white-space:nowrap}
+    .delete-msg{position:absolute;right:5px;top:5px;padding:3px 6px;font-size:10px;background:#a83d52}
+    .sys{align-self:center;padding:4px;color:var(--muted);font-size:12px;text-align:center}
+    #status{min-height:17px;padding:3px 12px;background:var(--panel);font-size:12px;color:var(--gold)}
+    #bar{display:flex;gap:8px;align-items:center;padding:10px;background:var(--panel);border-top:1px solid var(--line)}
+    #bar input{flex:1}
+    #send{min-width:68px}
+    #adminPanel{display:none;position:fixed;inset:0;z-index:10;overflow:auto;padding:14px;background:#050811e8}
+    .admin-card{width:min(720px,100%);margin:3vh auto;padding:16px;background:var(--panel);border:1px solid #34415a;border-radius:17px}
+    .admin-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .admin-head h2{font-size:19px;margin:0}
+    .secondary{background:#303b50}
+    .danger{background:#a83d52}
+    .section{padding-top:13px;margin-top:13px;border-top:1px solid var(--line)}
+    .section h3{font-size:14px;margin:0 0 9px}
+    .smallnote{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px}
+    #adminMsg{min-height:18px;margin-top:9px;font-size:12px;color:var(--green)}
+    #userList{display:flex;flex-direction:column;gap:9px}
+    .user-row{padding:10px 0;border-bottom:1px solid #293247}
+    .user-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+    .user-name{overflow-wrap:anywhere}
+    .user-meta{font-size:10px;color:var(--muted);margin-top:3px}
+    .user-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .user-actions button{padding:7px 9px;font-size:11px}
+    @media(min-width:700px){body{padding:14px}#app{height:calc(100dvh - 28px);border:1px solid var(--line);border-radius:17px;overflow:hidden}}
+  </style>
 </head>
 <body>
-<div id="join">
-  <h2 id="title">Login</h2>
-  <input id="name" maxlength="20" placeholder="Username" autocomplete="username">
-  <input id="pass" type="password" placeholder="Password (min 6)" autocomplete="current-password">
-  <button id="go">Login</button>
-  <button id="swap">Naya account banana hai?</button>
-  <div id="err"></div>
-</div>
-<div id="app">
-  <header>
-    <div id="top"><b>Dosto ka Chat</b><span><button id="adm">Admin</button><button id="out">Logout</button></span></div>
-    <div id="online"></div>
-  </header>
-  <div id="msgs"></div>
-  <div id="bar"><input id="text" placeholder="Message likho..." autocomplete="off"><button id="send">Send</button></div>
-</div>
+  <section id="join">
+    <div class="logo">💬 Dosto ka Chat</div>
+    <p class="sub">Apne doston ke saath ek hi live group mein.</p>
+    <h2 id="title">Login</h2>
+    <input id="name" maxlength="20" placeholder="Username" autocomplete="username" autocapitalize="none" spellcheck="false">
+    <input id="pass" type="password" maxlength="128" placeholder="Password (minimum 6 characters)" autocomplete="current-password">
+    <button id="go" type="button">Login</button>
+    <button id="swap" type="button">Naya account banana hai?</button>
+    <div id="err" role="alert" aria-live="polite"></div>
+  </section>
 
-<div id="panel">
-  <button id="pclose">Band karo</button>
-  <h3>Admin Panel</h3>
-  <div id="plist"></div>
-</div>
+  <main id="app">
+    <header>
+      <div id="top">
+        <div id="brand">💬 Dosto ka Chat <span id="welcome">Group chat</span></div>
+        <div class="head-actions">
+          <button id="adminOpen" type="button">Admin</button>
+          <button id="out" class="secondary" type="button">Logout</button>
+        </div>
+      </div>
+      <div id="online">Connecting...</div>
+      <div id="connection"></div>
+    </header>
+    <div id="notice"></div>
+    <section id="msgs" aria-live="polite" aria-label="Chat messages"></section>
+    <div id="status" role="status"></div>
+    <div id="bar">
+      <input id="text" maxlength="1000" placeholder="Message likho..." autocomplete="off">
+      <button id="send" type="button">Send</button>
+    </div>
+  </main>
 
-<script type="module">
-if (!window.firebase) {
-  document.getElementById("err").textContent = "Firebase script load nahi hui (Google ka server block ho raha hai)";
-  throw new Error("firebase missing");
-}
-const fb = window.firebase;
-const initializeApp = c => fb.initializeApp(c);
-const getAuth = () => fb.auth(), getDatabase = () => fb.database();
-const ref = (d, p) => d.ref(p), push = (r, v) => r.push(v), set = (r, v) => r.set(v), remove = r => r.remove();
-const onDisconnect = r => r.onDisconnect();
-const limitToLast = n => r => r.limitToLast(n);
-const query = (r, ...m) => m.reduce((q, f) => f(q), r);
-const serverTimestamp = () => fb.database.ServerValue.TIMESTAMP;
-const onValue = (r, cb) => r.on("value", cb), onChildAdded = (r, cb) => r.on("child_added", cb), onChildRemoved = (r, cb) => r.on("child_removed", cb);
-const createUserWithEmailAndPassword = (a, e, p) => a.createUserWithEmailAndPassword(e, p);
-const signInWithEmailAndPassword = (a, e, p) => a.signInWithEmailAndPassword(e, p);
-const updateProfile = (u, p) => u.updateProfile(p);
-const onAuthStateChanged = (a, cb) => a.onAuthStateChanged(cb);
-const signOut = a => a.signOut();
+  <section id="adminPanel" aria-label="Admin panel">
+    <div class="admin-card">
+      <div class="admin-head"><h2>🛡️ Admin Panel</h2><button id="adminClose" class="secondary" type="button">Close</button></div>
+      <p class="smallnote">User actions aur message delete sirf configured admin account kar sakta hai.</p>
+      <div class="section">
+        <h3>Group members</h3>
+        <div id="userList" class="smallnote">Users load ho rahe hain...</div>
+      </div>
+      <div id="adminMsg" role="status"></div>
+    </div>
+  </section>
 
-// ====== YAHAN APNA FIREBASE CONFIG PASTE KARO ======
-const firebaseConfig = {
-  apiKey: "AIzaSyBZkB5tUPEPCxFiAyPJaThrpof7NO_ffFw",
-  authDomain: "chatappdibya.firebaseapp.com",
-  databaseURL: "https://chatappdibya-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "chatappdibya",
-  appId: "1:266503318985:web:0c3d26fd2c4d5e470d8c18"
-};
-// ===================================================
+  <!-- Firebase Compat SDK: classic scripts, no ES module imports -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" onerror="document.getElementById('err').textContent='Firebase App SDK load nahi hua. Internet ya browser content blocker check karo.'"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" onerror="document.getElementById('err').textContent='Firebase Auth SDK load nahi hua.'"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js" onerror="document.getElementById('err').textContent='Firebase Database SDK load nahi hua.'"></script>
 
-const ADMIN_UID = "TkdZFaOuM8huIE3I5l6TSWHfHnY2";
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app), db = getDatabase(app);
-const $ = id => document.getElementById(id);
-const HIST = "chat_history_v1";
-let muteUntil = 0, users = {}, bans = {}, mutes = {}, me = null, signup = false, started = false, seen = new Set(), cache = [];
+  <script>
+  (() => {
+    'use strict';
 
-$("swap").onclick = () => {
-  signup = !signup;
-  $("title").textContent = signup ? "Naya account" : "Login";
-  $("go").textContent = signup ? "Account banao" : "Login";
-  $("swap").textContent = signup ? "Pehle se account hai? Login" : "Naya account banana hai?";
-  $("err").textContent = "";
-};
-
-async function submit() {
-  const name = $("name").value.trim(), pass = $("pass").value;
-  if (!/^[A-Za-z0-9_]{2,20}$/.test(name)) { $("err").textContent = "Username 2-20 letters/numbers/_ (bina space) ka ho"; return; }
-  if (pass.length < 6) { $("err").textContent = "Password kam se kam 6 character ka ho"; return; }
-  const email = name.toLowerCase() + "@dosto.chat";
-  try {
-    if (signup) {
-      const c = await createUserWithEmailAndPassword(auth, email, pass);
-      await updateProfile(c.user, { displayName: name });
-    } else {
-      await signInWithEmailAndPassword(auth, email, pass);
-    }
-  } catch (e) {
-    const m = {
-      "auth/email-already-in-use": "Ye username le liya gaya hai",
-      "auth/invalid-credential": "Username ya password galat hai",
-      "auth/user-not-found": "Ye account nahi mila",
-      "auth/wrong-password": "Password galat hai",
-      "auth/operation-not-allowed": "Firebase mein Email/Password login ON karo"
+    const firebaseConfig = {
+      apiKey: 'AIzaSyBZkB5tUPEPCxFiAyPJaThrpof7NO_ffFw',
+      authDomain: 'chatappdibya.firebaseapp.com',
+      databaseURL: 'https://chatappdibya-default-rtdb.asia-southeast1.firebasedatabase.app',
+      projectId: 'chatappdibya',
+      appId: '1:266503318985:web:0c3d26fd2c4d5e470d8c18'
     };
-    $("err").textContent = m[e.code] || "Error: " + e.code;
-  }
-}
-$("go").onclick = submit;
-$("pass").onkeydown = e => { if (e.key === "Enter") submit(); };
-$("out").onclick = () => signOut(auth).then(() => location.reload());
+    const ADMIN_UID = 'TkdZFaOuM8huIE3I5l6TSWHfHnY2';
+    const CACHE_KEY = 'dosto_chat_history_v2';
+    const $ = id => document.getElementById(id);
 
-onAuthStateChanged(auth, user => {
-  if (!user || started) return;
-  started = true; me = user;
-  $("join").style.display = "none";
-  $("app").style.display = "flex";
-  const myRef = ref(db, "online/" + user.uid);
-  set(myRef, user.displayName);
-  onDisconnect(myRef).remove();
-  set(ref(db, "users/" + user.uid), user.displayName).catch(() => {});
-  onValue(ref(db, "bans/" + user.uid), s => {
-    if (s.exists()) document.body.innerHTML = '<div style="margin:auto;padding:24px;text-align:center"><h2>Tumhe ban kiya gaya hai</h2><p>Admin se baat karo.</p></div>';
-  });
-  onValue(ref(db, "mutes/" + user.uid), s => { muteUntil = s.val() || 0; refreshMute(); });
-  setInterval(refreshMute, 15000);
-  if (user.uid === ADMIN_UID) setupAdmin();
-  try { cache = JSON.parse(localStorage.getItem(HIST) || "[]"); } catch { cache = []; }
-  cache.forEach(m => { seen.add(m.k); draw(m); });
-  push(ref(db, "messages"), { uid: user.uid, system: true, text: user.displayName + " online aaya", ts: serverTimestamp() });
-  onValue(ref(db, "online"), s => {
-    const names = Object.values(s.val() || {});
-    $("online").textContent = "● Online (" + names.length + "): " + names.join(", ");
-  });
-  const q = query(ref(db, "messages"), limitToLast(100));
-  onChildRemoved(q, s => {
-    const e = $("msgs").querySelector('[data-k="' + s.key + '"]'); if (e) e.remove();
-    cache = cache.filter(x => x.k !== s.key);
-    try { localStorage.setItem(HIST, JSON.stringify(cache)); } catch {}
-  });
-  onChildAdded(q, s => {
-    if (seen.has(s.key)) return;
-    seen.add(s.key);
-    const m = { k: s.key, ...s.val() };
-    draw(m);
-    cache.push(m); cache = cache.slice(-100);
-    try { localStorage.setItem(HIST, JSON.stringify(cache)); } catch {}
-  });
-});
+    let auth = null;
+    let db = null;
+    let currentUser = null;
+    let currentProfile = null;
+    let isAdmin = false;
+    let signupMode = false;
+    let busy = false;
+    let activeUid = null;
+    let isBanned = false;
+    let muteUntil = 0;
+    let chatEnabled = true;
+    let muteTimer = null;
+    let lastMessages = [];
+    let adminData = {users:{}, online:{}, bans:{}, mutes:{}};
 
-function draw(m) {
-  const d = document.createElement("div");
-  d.dataset.k = m.k;
-  if (m.system) { d.className = "sys"; d.textContent = m.text; }
-  else {
-    d.className = "m" + (m.uid === me.uid ? " me" : "");
-    const b = document.createElement("b"); b.textContent = m.user;
-    const t = document.createElement("span"); t.textContent = m.text;
-    d.append(b, t);
-  }
-  if (me.uid === ADMIN_UID) {
-    const x = document.createElement("button"); x.className = "del"; x.textContent = "🗑";
-    x.onclick = () => remove(ref(db, "messages/" + m.k));
-    d.appendChild(x);
-  }
-  const box = $("msgs"); box.appendChild(d); box.scrollTop = box.scrollHeight;
-}
+    function showError(message) { $('err').textContent = message || ''; }
+    function showStatus(message) { $('status').textContent = message || ''; }
+    function adminFeedback(message, isError = false) {
+      $('adminMsg').textContent = message || '';
+      $('adminMsg').style.color = isError ? '#ff8290' : '#57d69b';
+    }
 
-function send() {
-  const text = $("text").value.trim();
-  if (!text) return;
-  push(ref(db, "messages"), { uid: me.uid, user: me.displayName, text: text.slice(0, 500), ts: serverTimestamp() });
-  $("text").value = "";
-}
-window.__ok = true;
-document.getElementById("err").textContent = "";
-$("send").onclick = send;
+    function friendlyError(error) {
+      const code = error && error.code ? error.code : '';
+      const messages = {
+        'auth/email-already-in-use': 'Ye username pehle se liya gaya hai. Dusra username try karo.',
+        'auth/invalid-credential': 'Username ya password galat hai.',
+        'auth/user-not-found': 'Ye account nahi mila. Pehle account banao.',
+        'auth/wrong-password': 'Password galat hai.',
+        'auth/weak-password': 'Password kam se kam 6 characters ka rakho.',
+        'auth/operation-not-allowed': 'Firebase Console mein Email/Password sign-in enable karo.',
+        'auth/network-request-failed': 'Internet connection check karo.',
+        'auth/too-many-requests': 'Bahut attempts hue. Thodi der baad try karo.',
+        'PERMISSION_DENIED': 'Firebase Database Rules ne request rok di. Published rules check karo.',
+        'permission-denied': 'Firebase Database Rules ne request rok di. Published rules check karo.'
+      };
+      return messages[code] || (code ? 'Error: ' + code : 'Error: ' + (error && error.message ? error.message : 'Unknown error'));
+    }
 
-function refreshMute() {
-  const on = muteUntil > Date.now();
-  $("text").disabled = on; $("send").disabled = on;
-  $("text").placeholder = on ? "Tum mute ho (" + new Date(muteUntil).toLocaleTimeString() + " tak)" : "Message likho...";
-}
+    function setBusy(value) {
+      busy = value;
+      $('go').disabled = value;
+      $('go').textContent = value ? 'Please wait...' : (signupMode ? 'Account banao' : 'Login');
+    }
 
-function setupAdmin() {
-  $("adm").style.display = "inline-block";
-  $("adm").onclick = () => { $("panel").style.display = "block"; };
-  $("pclose").onclick = () => { $("panel").style.display = "none"; };
-  onValue(ref(db, "users"), s => { users = s.val() || {}; renderPanel(); });
-  onValue(ref(db, "bans"), s => { bans = s.val() || {}; renderPanel(); });
-  onValue(ref(db, "mutes"), s => { mutes = s.val() || {}; renderPanel(); });
-}
+    function updateChatControls() {
+      const muted = muteUntil > Date.now();
+      const blocked = isBanned || muted || !chatEnabled;
+      $('text').disabled = blocked;
+      $('send').disabled = blocked;
+      if (isBanned) {
+        $('text').placeholder = 'Is account ko group se ban kiya gaya hai';
+        showStatus('Tumhe ban kiya gaya hai.');
+      } else if (muted) {
+        $('text').placeholder = 'Tum mute ho. Thoda wait karo...';
+        showStatus('Tum mute ho. ' + new Date(muteUntil).toLocaleTimeString() + ' ke baad message bhej sakte ho.');
+      } else if (!chatEnabled) {
+        $('text').placeholder = 'Chat abhi admin ne pause kiya hai';
+        showStatus('Admin ne filhaal chat pause kiya hai.');
+      } else {
+        $('text').placeholder = 'Message likho...';
+        showStatus('');
+      }
+      if (muteTimer) clearTimeout(muteTimer);
+      if (muted) {
+        muteTimer = setTimeout(() => {
+          muteUntil = 0;
+          updateChatControls();
+        }, Math.min(muteUntil - Date.now() + 100, 2147483000));
+      }
+    }
 
-function renderPanel() {
-  const box = $("plist"); box.textContent = "";
-  Object.entries(users).forEach(([uid, name]) => {
-    if (uid === ADMIN_UID) return;
-    const row = document.createElement("div"); row.className = "row";
-    const n = document.createElement("span");
-    n.textContent = name + (bans[uid] ? "  🚫 banned" : (mutes[uid] > Date.now() ? "  🔇 mute" : ""));
-    row.appendChild(n);
-    const add = (label, fn) => { const b = document.createElement("button"); b.textContent = label; b.onclick = fn; row.appendChild(b); };
-    add("Mute 10m", () => set(ref(db, "mutes/" + uid), Date.now() + 600000));
-    add("Mute 1h", () => set(ref(db, "mutes/" + uid), Date.now() + 3600000));
-    add("Unmute", () => remove(ref(db, "mutes/" + uid)));
-    add(bans[uid] ? "Unban" : "Ban", () => {
-      if (bans[uid]) remove(ref(db, "bans/" + uid));
-      else { set(ref(db, "bans/" + uid), true); remove(ref(db, "online/" + uid)); }
+    function validateUsername(name) {
+      return /^[A-Za-z0-9_]{2,20}$/.test(name);
+    }
+
+    $('swap').addEventListener('click', () => {
+      signupMode = !signupMode;
+      $('title').textContent = signupMode ? 'Naya account' : 'Login';
+      $('swap').textContent = signupMode ? 'Pehle se account hai? Login' : 'Naya account banana hai?';
+      showError('');
+      setBusy(false);
     });
-    box.appendChild(row);
-  });
-  if (!box.children.length) box.textContent = "Abhi koi aur user nahi hai.";
-}
-$("text").onkeydown = e => { if (e.key === "Enter") send(); };
-</script>
+
+    async function submitLogin() {
+      if (busy) return;
+      const name = $('name').value.trim();
+      const password = $('pass').value;
+      if (!validateUsername(name)) {
+        showError('Username 2-20 letters, numbers ya _ ka hona chahiye. Space mat use karo.');
+        return;
+      }
+      if (password.length < 6) {
+        showError('Password kam se kam 6 characters ka hona chahiye.');
+        return;
+      }
+      const email = name.toLowerCase() + '@dosto.chat';
+      setBusy(true);
+      showError('');
+      try {
+        if (signupMode) {
+          const credential = await auth.createUserWithEmailAndPassword(email, password);
+          const profile = {
+            username: name,
+            usernameLower: name.toLowerCase(),
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+          };
+          await db.ref('users/' + credential.user.uid).set(profile);
+        } else {
+          await auth.signInWithEmailAndPassword(email, password);
+        }
+      } catch (error) {
+        showError(friendlyError(error));
+      } finally {
+        setBusy(false);
+        if (auth && auth.currentUser) startUserSession(auth.currentUser);
+      }
+    }
+
+    $('go').addEventListener('click', submitLogin);
+    $('pass').addEventListener('keydown', event => { if (event.key === 'Enter') submitLogin(); });
+    $('name').addEventListener('keydown', event => { if (event.key === 'Enter') $('pass').focus(); });
+    $('out').addEventListener('click', async () => {
+      try { await auth.signOut(); location.reload(); }
+      catch (error) { showStatus(friendlyError(error)); }
+    });
+
+    function ensureProfile(user) {
+      const profileRef = db.ref('users/' + user.uid);
+      return profileRef.once('value').then(snapshot => {
+        if (snapshot.exists()) return snapshot.val();
+        const emailName = (user.email || '').split('@')[0];
+        const fallbackName = user.displayName || emailName;
+        if (!validateUsername(fallbackName)) throw new Error('Is account ka username valid nahi hai. Admin se contact karo.');
+        const profile = {
+          username: fallbackName,
+          usernameLower: emailName.toLowerCase(),
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        };
+        return profileRef.set(profile).then(() => profileRef.once('value')).then(s => s.val());
+      });
+    }
+
+    function startPresence(user, username) {
+      const presenceRef = db.ref('online/' + user.uid);
+      return presenceRef.onDisconnect().remove().then(() => presenceRef.set(username));
+    }
+
+    async function startUserSession(user) {
+      if (activeUid === user.uid) return;
+      activeUid = user.uid;
+      currentUser = user;
+      showError('');
+      try {
+        currentProfile = await ensureProfile(user);
+        isAdmin = user.uid === ADMIN_UID;
+        const banSnapshot = await db.ref('bans/' + user.uid).once('value');
+        if (banSnapshot.val() === true) {
+          isBanned = true;
+          await auth.signOut();
+          showError('Tumhe ban kiya gaya hai.');
+          activeUid = null;
+          return;
+        }
+        isBanned = false;
+        $('join').style.display = 'none';
+        $('app').style.display = 'flex';
+        $('welcome').textContent = 'Logged in as ' + currentProfile.username;
+        $('adminOpen').style.display = isAdmin ? 'inline-block' : 'none';
+        await startPresence(user, currentProfile.username);
+        attachLiveData(user.uid);
+        if (isAdmin) attachAdminData();
+      } catch (error) {
+        showError(friendlyError(error));
+        activeUid = null;
+        try { await auth.signOut(); } catch (_) {}
+      }
+    }
+
+    function attachLiveData(uid) {
+      db.ref('online').on('value', snapshot => {
+        const people = snapshot.val() || {};
+        const names = Object.values(people).filter(Boolean);
+        $('online').textContent = '● Online (' + names.length + '): ' + names.join(', ');
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('messages').limitToLast(100).on('value', snapshot => {
+        const messages = [];
+        snapshot.forEach(child => {
+          const value = child.val();
+          if (value && typeof value.text === 'string') messages.push({key:child.key, ...value});
+        });
+        lastMessages = messages;
+        drawAllMessages(messages);
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(messages)); } catch (_) {}
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('bans/' + uid).on('value', async snapshot => {
+        if (snapshot.val() === true && !isBanned) {
+          isBanned = true;
+          updateChatControls();
+          showError('Tumhe ban kiya gaya hai.');
+          try { await auth.signOut(); } catch (_) {}
+          activeUid = null;
+        }
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('mutes/' + uid).on('value', snapshot => {
+        const value = snapshot.val();
+        muteUntil = value && Number(value.until) > Date.now() ? Number(value.until) : 0;
+        updateChatControls();
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('settings/chatEnabled').on('value', snapshot => {
+        chatEnabled = snapshot.val() !== false;
+        if (isAdmin) $('notice').style.display = 'none';
+        else {
+          $('notice').style.display = chatEnabled ? 'none' : 'block';
+          $('notice').textContent = chatEnabled ? '' : 'Admin ne filhaal chat pause kiya hai.';
+        }
+        updateChatControls();
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('.info/connected').on('value', snapshot => {
+        $('connection').textContent = snapshot.val() ? 'Connected' : 'Reconnecting...';
+        $('connection').style.color = snapshot.val() ? '#57d69b' : '#ffd27a';
+      });
+    }
+
+    function drawAllMessages(messages) {
+      const box = $('msgs');
+      box.replaceChildren();
+      messages.forEach(message => drawMessage(message, box));
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function drawMessage(message, box) {
+      const item = document.createElement('article');
+      item.className = 'msg' + (currentUser && message.uid === currentUser.uid ? ' me' : '');
+      item.dataset.key = message.key;
+      const name = document.createElement('b');
+      name.textContent = message.user || 'Unknown';
+      const content = document.createElement('span');
+      content.textContent = message.text || '';
+      const stamp = document.createElement('span');
+      stamp.className = 'stamp';
+      const time = Number(message.ts);
+      stamp.textContent = Number.isFinite(time) && time > 0 ? new Date(time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+      item.append(name, content, stamp);
+      if (isAdmin) {
+        const del = document.createElement('button');
+        del.className = 'delete-msg';
+        del.type = 'button';
+        del.textContent = '🗑';
+        del.title = 'Delete message';
+        del.addEventListener('click', async () => {
+          if (!confirm('Is message ko delete karna hai?')) return;
+          try {
+            await db.ref('messages/' + message.key).remove();
+            adminFeedback('Message delete ho gaya.');
+          } catch (error) { adminFeedback(friendlyError(error), true); }
+        });
+        item.appendChild(del);
+      }
+      box.appendChild(item);
+    }
+
+    async function sendMessage() {
+      const text = $('text').value.trim();
+      if (!text || !currentUser || !currentProfile || isBanned || muteUntil > Date.now() || !chatEnabled) return;
+      $('send').disabled = true;
+      try {
+        await db.ref('messages').push({
+          uid: currentUser.uid,
+          user: currentProfile.username,
+          text: text.slice(0, 1000),
+          ts: firebase.database.ServerValue.TIMESTAMP
+        });
+        $('text').value = '';
+        showStatus('');
+      } catch (error) {
+        showStatus(friendlyError(error));
+      } finally {
+        updateChatControls();
+      }
+    }
+    $('send').addEventListener('click', sendMessage);
+    $('text').addEventListener('keydown', event => { if (event.key === 'Enter') sendMessage(); });
+
+    function attachAdminData() {
+      ['users','online','bans','mutes'].forEach(path => {
+        db.ref(path).on('value', snapshot => {
+          adminData[path] = snapshot.val() || {};
+          renderAdminUsers();
+        }, error => adminFeedback(friendlyError(error), true));
+      });
+    }
+
+    function renderAdminUsers() {
+      if (!isAdmin) return;
+      const box = $('userList');
+      box.replaceChildren();
+      const entries = Object.entries(adminData.users || {}).sort((a,b) => {
+        const an = (a[1] && a[1].username || '').toLowerCase();
+        const bn = (b[1] && b[1].username || '').toLowerCase();
+        return an.localeCompare(bn);
+      });
+      if (!entries.length) {
+        box.textContent = 'Abhi koi registered user nahi mila.';
+        return;
+      }
+      entries.forEach(([uid, profile]) => {
+        const name = profile && profile.username ? profile.username : 'Unknown';
+        const banned = adminData.bans && adminData.bans[uid] === true;
+        const mute = adminData.mutes && adminData.mutes[uid];
+        const muted = mute && Number(mute.until) > Date.now();
+        const online = adminData.online && Object.prototype.hasOwnProperty.call(adminData.online, uid);
+        const row = document.createElement('div');
+        row.className = 'user-row';
+        const top = document.createElement('div');
+        top.className = 'user-top';
+        const label = document.createElement('span');
+        label.className = 'user-name';
+        label.textContent = name + (uid === ADMIN_UID ? ' (Admin)' : '');
+        const state = document.createElement('span');
+        state.textContent = banned ? 'BANNED' : (muted ? 'MUTED' : (online ? '● Online' : 'Offline'));
+        state.style.color = banned ? '#ff8290' : (muted ? '#ffd27a' : (online ? '#57d69b' : '#9aa8c2'));
+        top.append(label, state);
+        const meta = document.createElement('div');
+        meta.className = 'user-meta';
+        meta.textContent = 'UID: ' + uid;
+        row.append(top, meta);
+        if (uid !== ADMIN_UID) {
+          const actions = document.createElement('div');
+          actions.className = 'user-actions';
+          if (banned) {
+            addAdminButton(actions, 'Unban', 'secondary', () => adminAction(uid, 'unban'));
+          } else {
+            addAdminButton(actions, 'Ban', 'danger', () => adminAction(uid, 'ban'));
+          }
+          addAdminButton(actions, 'Mute 10m', 'secondary', () => adminAction(uid, 'mute10'));
+          addAdminButton(actions, 'Mute 1h', 'secondary', () => adminAction(uid, 'mute60'));
+          addAdminButton(actions, 'Unmute', 'secondary', () => adminAction(uid, 'unmute'));
+          row.appendChild(actions);
+        }
+        box.appendChild(row);
+      });
+    }
+
+    function addAdminButton(parent, label, className, action) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.className = className;
+      button.addEventListener('click', action);
+      parent.appendChild(button);
+    }
+
+    async function adminAction(uid, action) {
+      if (!isAdmin || !uid || uid === ADMIN_UID) return;
+      try {
+        if (action === 'ban') {
+          if (!confirm('Is user ko ban karna hai?')) return;
+          await db.ref('bans/' + uid).set(true);
+          adminFeedback('User ban ho gaya.');
+        } else if (action === 'unban') {
+          await db.ref('bans/' + uid).remove();
+          adminFeedback('User unban ho gaya.');
+        } else if (action === 'mute10' || action === 'mute60') {
+          const minutes = action === 'mute10' ? 10 : 60;
+          await db.ref('mutes/' + uid).set({until: Date.now() + minutes * 60 * 1000, by: currentUser.uid});
+          adminFeedback('User ' + minutes + ' minute ke liye mute ho gaya.');
+        } else if (action === 'unmute') {
+          await db.ref('mutes/' + uid).remove();
+          adminFeedback('User unmute ho gaya.');
+        }
+      } catch (error) { adminFeedback(friendlyError(error), true); }
+    }
+
+    $('adminOpen').addEventListener('click', () => {
+      if (isAdmin) $('adminPanel').style.display = 'block';
+    });
+    $('adminClose').addEventListener('click', () => { $('adminPanel').style.display = 'none'; });
+    $('adminPanel').addEventListener('click', event => {
+      if (event.target === $('adminPanel')) $('adminPanel').style.display = 'none';
+    });
+
+    function showCachedMessages() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+        if (Array.isArray(cached) && cached.length) {
+          lastMessages = cached.slice(-100);
+          drawAllMessages(lastMessages);
+        }
+      } catch (_) {}
+    }
+
+    window.addEventListener('error', event => {
+      const message = event && event.message ? event.message : 'JavaScript error';
+      showError('App error: ' + message);
+    });
+    window.addEventListener('unhandledrejection', event => {
+      showError('App error: ' + friendlyError(event.reason));
+    });
+
+    if (!window.firebase || !firebase.initializeApp || !firebase.auth || !firebase.database) {
+      showError('Firebase SDK load nahi hua. Page ko reload karo ya internet check karo.');
+      return;
+    }
+
+    try {
+      firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      db = firebase.database();
+      auth.onAuthStateChanged(user => {
+        if (!user) {
+          currentUser = null;
+          currentProfile = null;
+          isAdmin = false;
+          activeUid = null;
+          $('join').style.display = 'block';
+          $('app').style.display = 'none';
+          $('adminOpen').style.display = 'none';
+          return;
+        }
+        if (!busy) startUserSession(user);
+      });
+      showCachedMessages();
+    } catch (error) {
+      showError('Firebase start nahi hua: ' + friendlyError(error));
+    }
+  })();
+  </script>
 </body>
 </html>
