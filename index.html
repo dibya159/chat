@@ -33,8 +33,11 @@ header{padding:10px 14px;background:#171a21;border-bottom:1px solid #262a33;font
 #adm{display:none;padding:4px 10px;font-size:12px;background:#2a2f3a;margin-right:6px}
 .del{background:none;font-size:12px;padding:0 4px;color:#888}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-window.addEventListener("error", function (e) { var x = document.getElementById("err"); if (x) x.textContent = "JS error: " + e.message; });
+window.addEventListener("error", function (e) { if (!e.message || e.message === "Script error.") return; var x = document.getElementById("err"); if (x) x.textContent = "JS error: " + e.message; });
 setTimeout(function () { if (!window.__ok) { var x = document.getElementById("err"); if (x) x.textContent = "App load nahi hui: internet/adblock check karo ya page refresh karo"; } }, 15000);
 </script>
 </head>
@@ -63,31 +66,24 @@ setTimeout(function () { if (!window.__ok) { var x = document.getElementById("er
 </div>
 
 <script type="module">
-const B = "https://www.gstatic.com/firebasejs/10.12.2/";
-let initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut;
-let getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp;
-try {
-  const SRC = [
-    [B + "firebase-app.js", B + "firebase-auth.js", B + "firebase-database.js"],
-    ["https://cdn.jsdelivr.net/npm/firebase@10.12.2/app/+esm", "https://cdn.jsdelivr.net/npm/firebase@10.12.2/auth/+esm", "https://cdn.jsdelivr.net/npm/firebase@10.12.2/database/+esm"],
-    ["https://esm.sh/firebase@10.12.2/app", "https://esm.sh/firebase@10.12.2/auth", "https://esm.sh/firebase@10.12.2/database"]
-  ];
-  let a, b, c, lastErr = null;
-  for (const [u1, u2, u3] of SRC) {
-    try { [a, b, c] = await Promise.all([import(u1), import(u2), import(u3)]); lastErr = null; break; }
-    catch (e) { lastErr = e; }
-  }
-  if (lastErr) throw lastErr;
-  ({ initializeApp } = a);
-  ({ getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } = b);
-  ({ getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp } = c);
-  const need = { initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut, getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp };
-  const missing = Object.keys(need).filter(k => typeof need[k] !== "function");
-  if (missing.length) throw new Error("missing: " + missing.join(", "));
-} catch (e) {
-  document.getElementById("err").textContent = "Load error: " + (e && e.message ? e.message : e);
-  throw e;
+if (!window.firebase) {
+  document.getElementById("err").textContent = "Firebase script load nahi hui (Google ka server block ho raha hai)";
+  throw new Error("firebase missing");
 }
+const fb = window.firebase;
+const initializeApp = c => fb.initializeApp(c);
+const getAuth = () => fb.auth(), getDatabase = () => fb.database();
+const ref = (d, p) => d.ref(p), push = (r, v) => r.push(v), set = (r, v) => r.set(v), remove = r => r.remove();
+const onDisconnect = r => r.onDisconnect();
+const limitToLast = n => r => r.limitToLast(n);
+const query = (r, ...m) => m.reduce((q, f) => f(q), r);
+const serverTimestamp = () => fb.database.ServerValue.TIMESTAMP;
+const onValue = (r, cb) => r.on("value", cb), onChildAdded = (r, cb) => r.on("child_added", cb), onChildRemoved = (r, cb) => r.on("child_removed", cb);
+const createUserWithEmailAndPassword = (a, e, p) => a.createUserWithEmailAndPassword(e, p);
+const signInWithEmailAndPassword = (a, e, p) => a.signInWithEmailAndPassword(e, p);
+const updateProfile = (u, p) => u.updateProfile(p);
+const onAuthStateChanged = (a, cb) => a.onAuthStateChanged(cb);
+const signOut = a => a.signOut();
 
 // ====== YAHAN APNA FIREBASE CONFIG PASTE KARO ======
 const firebaseConfig = {
