@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101522">
+  <title>Dosto ka Chat</title>
+  <style>
+    :root{color-scheme:dark;--bg:#090d18;--panel:#141b2b;--panel2:#1a2438;--line:#2b3852;--blue:#6d75ff;--purple:#9b6cff;--text:#f1f3ff;--muted:#9ba9c5;--green:#55d9a0;--red:#f0788d;--gold:#ffd27a}
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+    body{min-height:100dvh;background-size:cover;background-position:center;background-attachment:fixed}
+    button,input{font:inherit} button{border:0;border-radius:12px;padding:10px 13px;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;font-weight:700;cursor:pointer}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    input{width:100%;min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0c1220;color:var(--text);font-size:16px;outline:none}
+    input:focus{border-color:var(--blue)}
+    #join{width:min(390px,92%);margin:11vh auto 0;padding:25px;background:#141b2bf2;border:1px solid var(--line);border-radius:22px;box-shadow:0 20px 70px #0008;text-align:center}
+    .logo{font-size:26px;font-weight:900;margin-bottom:4px}.sub{font-size:13px;color:var(--muted);margin:0 0 18px}
+    #join h2{font-size:19px;margin:10px 0}#join input{margin:6px 0}#join #go,#join #swap{width:100%;margin-top:10px}
+    #swap{background:transparent;color:#b9baff;font-weight:600}#err{min-height:22px;margin-top:8px;color:#ff8290;font-size:13px;overflow-wrap:anywhere}
+    #app{display:none;flex-direction:column;height:100dvh;max-width:900px;margin:0 auto;background:#0c1220f2;min-height:0;position:relative;overflow:hidden}
+    header{flex:none;padding:9px 12px;background:#151d2df5;border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}
+    #top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    #brand{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:900;min-width:0}
+    #brandText{min-width:0}#welcome{display:block;font-size:10px;font-weight:500;color:var(--muted);white-space:nowrap}
+    .avatar{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:linear-gradient(135deg,#626fff,#a06cff);border:2px solid #7d83ff;color:white;font-weight:900}
+    .avatar img{width:100%;height:100%;object-fit:cover}
+    .head-actions{display:flex;gap:6px;align-items:center}
+    .icon-btn{width:40px;height:40px;padding:0;border-radius:13px;background:#202b42;border:1px solid #34415e;font-size:17px}
+    #out{display:none}#adminOpen{display:none}
+    #online{margin-top:7px;color:var(--green);font-size:11px;white-space:nowrap;overflow-x:auto}
+    #connection{font-size:10px;color:var(--muted);margin-top:2px;min-height:12px}
+    #notice{display:none;padding:8px 12px;background:#382c17;color:var(--gold);font-size:12px;text-align:center}
+    #featureHost{display:flex;flex-direction:column;gap:8px;padding:0;position:static}
+    .bridge-feature{padding:0;border:0;background:transparent}.bridge-feature[hidden]{display:none}.bridge-title{display:none}.bridge-error{font-size:12px;color:var(--red)}
+    #msgs{flex:1;min-height:0;overflow-y:auto;padding:13px 11px 18px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain;background:transparent}
+    .msg-row{display:flex;align-items:flex-end;gap:7px;max-width:91%;align-self:flex-start}.msg-row.mine{align-self:flex-end;flex-direction:row-reverse}
+    .msg-avatar{width:27px;height:27px;border-radius:50%;overflow:hidden;flex:none;background:#39456b;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+    .msg-avatar img{width:100%;height:100%;object-fit:cover}
+    .msg{position:relative;max-width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:15px 15px 15px 5px;background:#1a2436;overflow-wrap:anywhere;white-space:pre-wrap;font-size:14px;line-height:1.4}
+    .msg.me{background:linear-gradient(135deg,#384caa,#59449c);border-color:#6474d7;border-radius:15px 15px 5px 15px}
+    .msg b{display:block;color:#c2caff;font-size:11px;margin:0 38px 3px 0}.msg.me b{display:none}
+    .msg .stamp{font-size:9px;color:#c2cbe0;margin-left:7px;white-space:nowrap}
+    .delete-msg{position:absolute;right:4px;top:4px;padding:2px 5px;font-size:9px;background:#a83d52}
+    .sys{align-self:center;padding:4px;color:var(--muted);font-size:11px;text-align:center}
+    #status{flex:none;min-height:16px;padding:2px 12px;background:#141b2bf2;font-size:11px;color:var(--gold)}
+    #bar{display:flex;gap:8px;align-items:center;padding:9px 10px calc(9px + env(safe-area-inset-bottom));background:#151d2df7;border-top:1px solid var(--line)}
+    #bar input{flex:1;border-radius:22px;padding:11px 15px;background:#0c1322}#send{min-width:66px;border-radius:22px}
+    #bottomNav{height:57px;flex:none;display:grid;grid-template-columns:1fr 1fr;background:#141b2bf7;border-top:1px solid var(--line);padding:5px 12px calc(5px + env(safe-area-inset-bottom));gap:10px}
+    .nav-btn{background:transparent;color:#8997b4;border:1px solid transparent;border-radius:12px;padding:5px;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+    .nav-btn strong{font-size:18px;line-height:1.2}.nav-btn.active{color:#fff;background:#29345b;border-color:#4656a0}
+    .lb-toggle{display:none!important}
+    #menuPanel{display:none;position:absolute;right:10px;top:58px;z-index:20;width:205px;padding:7px;background:#1a2438;border:1px solid #3b4968;border-radius:15px;box-shadow:0 15px 40px #0009}
+    #menuPanel.open{display:block}.menu-item{width:100%;text-align:left;margin:2px 0;padding:10px;background:transparent;color:#e9edff;border-radius:9px;font-size:13px}.menu-item:active{background:#303d60}
+    .overlay{display:none;position:fixed;inset:0;z-index:30;background:#050812d9;padding:12px;overflow:auto;align-items:center;justify-content:center}
+    .overlay.open{display:flex}.modal-card{width:min(520px,100%);max-height:88dvh;overflow:auto;background:#151e30;border:1px solid #394866;border-radius:19px;padding:15px;box-shadow:0 20px 70px #0009}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.modal-head h2{font-size:17px;margin:0}
+    .secondary{background:#303b50}.danger{background:#a83d52}.section{padding-top:13px;margin-top:13px;border-top:1px solid var(--line)}
+    .smallnote{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px}
+    #adminMsg{min-height:18px;margin-top:9px;font-size:12px;color:var(--green)}
+    #userList,#membersList{display:flex;flex-direction:column;gap:7px}
+    .user-row{padding:9px 0;border-bottom:1px solid #293247}.user-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+    .user-name{overflow-wrap:anywhere}.user-meta{font-size:10px;color:var(--muted);margin-top:3px}
+    .user-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.user-actions button{padding:7px 9px;font-size:11px}
+    .member-row{display:flex;align-items:center;gap:10px;padding:9px;border-radius:12px;background:#1b263b}.member-row .avatar{width:40px;height:40px}
+    .member-info{min-width:0;flex:1}.member-info b{display:block;font-size:13px}.member-info small{font-size:10px;color:var(--muted)}
+    .file-pick{display:block;width:100%;padding:11px;border:1px dashed #59688e;border-radius:12px;color:#dce3ff;background:#1b263b;margin-top:8px;font-size:12px}
+    .preview-bg{height:95px;border-radius:12px;background:#0b1020 center/cover;margin:10px 0;border:1px solid var(--line)}
+    @media(min-width:700px){body{padding:14px}#app{height:calc(100dvh - 28px);border:1px solid var(--line);border-radius:19px}.overlay{position:absolute}}
+  </style>
+</head>
+<body>
+  <button id="out" type="button" hidden aria-hidden="true" tabindex="-1">Logout</button>
+
+  <section id="join">
+    <div class="logo">💬 Dosto ka Chat</div>
+    <p class="sub">Apne doston ke saath ek hi live group mein.</p>
+    <h2 id="title">Login</h2>
+    <input id="name" maxlength="20" placeholder="Username" autocomplete="username" autocapitalize="none" spellcheck="false">
+    <input id="pass" type="password" maxlength="128" placeholder="Password (minimum 6 characters)" autocomplete="current-password">
+    <button id="go" type="button">Login</button>
+    <button id="swap" type="button">Naya account banana hai?</button>
+    <div id="err" role="alert" aria-live="polite"></div>
+  </section>
+
+  <main id="app">
+    <header>
+      <div id="top">
+        <div id="brand">
+          <div class="avatar" id="myAvatar">D</div>
+          <div id="brandText">Dosto ka Chat <span id="welcome">Group chat</span></div>
+        </div>
+        <div class="head-actions">
+          <button id="membersOpen" class="icon-btn" type="button" aria-label="Members">👥</button>
+          <button id="menuOpen" class="icon-btn" type="button" aria-label="Menu">☰</button>
+        </div>
+      </div>
+      <div id="online">Connecting...</div>
+      <div id="connection"></div>
+    </header>
+    <div id="menuPanel">
+      <button class="menu-item" id="menuAdmin" type="button">🛡️ Admin Panel</button>
+      <button class="menu-item" id="changeDP" type="button">🖼️ Change DP</button>
+      <button class="menu-item" id="changeBG" type="button">🌌 Change Background</button>
+      <button class="menu-item" id="resetBG" type="button">↩️ Reset Background</button>
+      <button class="menu-item" id="logoutMenu" type="button">↪ Logout</button>
+    </div>
+    <div id="notice"></div>
+    <div id="featureHost" aria-live="polite"></div>
+    <section id="msgs" aria-live="polite" aria-label="Chat messages"></section>
+    <div id="status" role="status"></div>
+    <div id="bar">
+      <input id="text" maxlength="1000" placeholder="Message likho..." autocomplete="off">
+      <button id="send" type="button">Send</button>
+    </div>
+    <nav id="bottomNav" aria-label="Main navigation">
+      <button class="nav-btn active" id="chatTab" type="button"><strong>💬</strong>Chat</button>
+      <button class="nav-btn" id="leaderboardTab" type="button"><strong>🏆</strong>Leaderboard</button>
+    </nav>
+  </main>
+
+  <section class="overlay" id="membersModal" aria-label="Group members">
+    <div class="modal-card">
+      <div class="modal-head"><h2>👥 Group Members</h2><button class="secondary" id="membersClose" type="button">Close</button></div>
+      <div class="smallnote" id="membersCount">Members loading...</div>
+      <div id="membersList"></div>
+    </div>
+  </section>
+  <section class="overlay" id="settingsModal" aria-label="Customize profile">
+    <div class="modal-card">
+      <div class="modal-head"><h2>🎨 Customize</h2><button class="secondary" id="settingsClose" type="button">Close</button></div>
+      <p class="smallnote">DP sabhi members ko dikhegi. Background sirf tumhare device par save hoga.</p>
+      <div class="section">
+        <h3>Profile picture (shared)</h3>
+        <label class="file-pick">Choose DP<input id="dpFile" type="file" accept="image/*" hidden></label>
+        <div class="smallnote">Image automatically compress hokar tumhare profile mein save hogi.</div>
+      </div>
+      <div class="section">
+        <h3>Chat background (only your device)</h3>
+        <label class="file-pick">Choose background<input id="bgFile" type="file" accept="image/*" hidden></label>
+        <div class="preview-bg" id="bgPreview"></div>
+        <button class="secondary" id="bgReset2" type="button">Reset background</button>
+      </div>
+      <div id="customMsg" class="smallnote" role="status"></div>
+    </div>
+  </section>
+  <section id="adminPanel" aria-label="Admin panel">
+    <div class="admin-card">
+      <div class="admin-head"><h2>🛡️ Admin Panel</h2><button id="adminClose" class="secondary" type="button">Close</button></div>
+      <p class="smallnote">User actions aur message delete sirf configured admin account kar sakta hai.</p>
+      <div class="section">
+        <h3>Group members</h3>
+        <div id="userList" class="smallnote">Users load ho rahe hain...</div>
+      </div>
+      <div id="adminMsg" role="status"></div>
+    </div>
+  </section>
+
+  <!-- Feature bridge: future modules load from features.json without editing this page again. -->
+  <script src="./bridge.js" defer></script>
+
+  <!-- Firebase Compat SDK: classic scripts, no ES module imports -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" onerror="document.getElementById('err').textContent='Firebase App SDK load nahi hua. Internet ya browser content blocker check karo.'"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" onerror="document.getElementById('err').textContent='Firebase Auth SDK load nahi hua.'"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js" onerror="document.getElementById('err').textContent='Firebase Database SDK load nahi hua.'"></script>
+
+  <script>
+  (() => {
+    'use strict';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyBZkB5tUPEPCxFiAyPJaThrpof7NO_ffFw',
+      authDomain: 'chatappdibya.firebaseapp.com',
+      databaseURL: 'https://chatappdibya-default-rtdb.asia-southeast1.firebasedatabase.app',
+      projectId: 'chatappdibya',
+      appId: '1:266503318985:web:0c3d26fd2c4d5e470d8c18'
+    };
+    const ADMIN_UID = 'TkdZFaOuM8huIE3I5l6TSWHfHnY2';
+    const CACHE_KEY = 'dosto_chat_history_v2';
+    const $ = id => document.getElementById(id);
+
+    let auth = null;
+    let db = null;
+    let currentUser = null;
+    let currentProfile = null;
+    let isAdmin = false;
+    let signupMode = false;
+    let busy = false;
+    let activeUid = null;
+    let isBanned = false;
+    let muteUntil = 0;
+    let chatEnabled = true;
+    let muteTimer = null;
+    let lastMessages = [];
+    let adminData = {users:{}, online:{}, bans:{}, mutes:{}};
+    let allProfiles = {};
+    const BG_KEY = 'dosto_chat_background_v1';
+
+    function showError(message) { $('err').textContent = message || ''; }
+    function showStatus(message) { $('status').textContent = message || ''; }
+    function adminFeedback(message, isError = false) {
+      $('adminMsg').textContent = message || '';
+      $('adminMsg').style.color = isError ? '#ff8290' : '#57d69b';
+    }
+
+    function friendlyError(error) {
+      const code = error && error.code ? error.code : '';
+      const messages = {
+        'auth/email-already-in-use': 'Ye username pehle se liya gaya hai. Dusra username try karo.',
+        'auth/invalid-credential': 'Username ya password galat hai.',
+        'auth/user-not-found': 'Ye account nahi mila. Pehle account banao.',
+        'auth/wrong-password': 'Password galat hai.',
+        'auth/weak-password': 'Password kam se kam 6 characters ka rakho.',
+        'auth/operation-not-allowed': 'Firebase Console mein Email/Password sign-in enable karo.',
+        'auth/network-request-failed': 'Internet connection check karo.',
+        'auth/too-many-requests': 'Bahut attempts hue. Thodi der baad try karo.',
+        'PERMISSION_DENIED': 'Firebase Database Rules ne request rok di. Published rules check karo.',
+        'permission-denied': 'Firebase Database Rules ne request rok di. Published rules check karo.'
+      };
+      return messages[code] || (code ? 'Error: ' + code : 'Error: ' + (error && error.message ? error.message : 'Unknown error'));
+    }
+
+    function setBusy(value) {
+      busy = value;
+      $('go').disabled = value;
+      $('go').textContent = value ? 'Please wait...' : (signupMode ? 'Account banao' : 'Login');
+    }
+
+    function updateChatControls() {
+      const muted = muteUntil > Date.now();
+      const blocked = isBanned || muted || !chatEnabled;
+      $('text').disabled = blocked;
+      $('send').disabled = blocked;
+      if (isBanned) {
+        $('text').placeholder = 'Is account ko group se ban kiya gaya hai';
+        showStatus('Tumhe ban kiya gaya hai.');
+      } else if (muted) {
+        $('text').placeholder = 'Tum mute ho. Thoda wait karo...';
+        showStatus('Tum mute ho. ' + new Date(muteUntil).toLocaleTimeString() + ' ke baad message bhej sakte ho.');
+      } else if (!chatEnabled) {
+        $('text').placeholder = 'Chat abhi admin ne pause kiya hai';
+        showStatus('Admin ne filhaal chat pause kiya hai.');
+      } else {
+        $('text').placeholder = 'Message likho...';
+        showStatus('');
+      }
+      if (muteTimer) clearTimeout(muteTimer);
+      if (muted) {
+        muteTimer = setTimeout(() => {
+          muteUntil = 0;
+          updateChatControls();
+        }, Math.min(muteUntil - Date.now() + 100, 2147483000));
+      }
+    }
+
+    function validateUsername(name) {
+      return /^[A-Za-z0-9_]{2,20}$/.test(name);
+    }
+
+    $('swap').addEventListener('click', () => {
+      signupMode = !signupMode;
+      $('title').textContent = signupMode ? 'Naya account' : 'Login';
+      $('swap').textContent = signupMode ? 'Pehle se account hai? Login' : 'Naya account banana hai?';
+      showError('');
+      setBusy(false);
+    });
+
+    async function submitLogin() {
+      if (busy) return;
+      if (!window.firebase || typeof firebase.auth !== 'function' || !auth) {
+        showError('Firebase Auth ready nahi hai. Page reload karo. Agar ye message rahe, Firebase Auth SDK load nahi ho raha.');
+        return;
+      }
+      if (typeof firebase.database !== 'function' || !db) {
+        showError('Firebase Database SDK ready nahi hai. Page reload karo aur internet connection check karo.');
+        return;
+      }
+      const name = $('name').value.trim();
+      const password = $('pass').value;
+      if (!validateUsername(name)) {
+        showError('Username 2-20 letters, numbers ya _ ka hona chahiye. Space mat use karo.');
+        return;
+      }
+      if (password.length < 6) {
+        showError('Password kam se kam 6 characters ka hona chahiye.');
+        return;
+      }
+      const email = name.toLowerCase() + '@dosto.chat';
+      setBusy(true);
+      showError('');
+      try {
+        if (signupMode) {
+          const credential = await auth.createUserWithEmailAndPassword(email, password);
+          const profile = {
+            username: name,
+            usernameLower: name.toLowerCase(),
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+          };
+          await db.ref('users/' + credential.user.uid).set(profile);
+        } else {
+          await auth.signInWithEmailAndPassword(email, password);
+        }
+      } catch (error) {
+        showError(friendlyError(error));
+      } finally {
+        setBusy(false);
+        if (auth && auth.currentUser) startUserSession(auth.currentUser);
+      }
+    }
+
+    $('go').addEventListener('click', submitLogin);
+    $('pass').addEventListener('keydown', event => { if (event.key === 'Enter') submitLogin(); });
+    $('name').addEventListener('keydown', event => { if (event.key === 'Enter') $('pass').focus(); });
+    $('out').addEventListener('click', async () => {
+      try { await auth.signOut(); location.reload(); }
+      catch (error) { showStatus(friendlyError(error)); }
+    });
+
+    function ensureProfile(user) {
+      const profileRef = db.ref('users/' + user.uid);
+      return profileRef.once('value').then(snapshot => {
+        if (snapshot.exists()) return snapshot.val();
+        const emailName = (user.email || '').split('@')[0];
+        const fallbackName = user.displayName || emailName;
+        if (!validateUsername(fallbackName)) throw new Error('Is account ka username valid nahi hai. Admin se contact karo.');
+        const profile = {
+          username: fallbackName,
+          usernameLower: emailName.toLowerCase(),
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        };
+        return profileRef.set(profile).then(() => profileRef.once('value')).then(s => s.val());
+      });
+    }
+
+    function startPresence(user, username) {
+      const presenceRef = db.ref('online/' + user.uid);
+      return presenceRef.onDisconnect().remove().then(() => presenceRef.set(username));
+    }
+
+    async function startUserSession(user) {
+      if (activeUid === user.uid) return;
+      activeUid = user.uid;
+      currentUser = user;
+      showError('');
+      try {
+        currentProfile = await ensureProfile(user);
+        isAdmin = user.uid === ADMIN_UID;
+        if (window.DostoBridge) window.DostoBridge.setUser({uid:user.uid, username:currentProfile.username, isAdmin});
+        const banSnapshot = await db.ref('bans/' + user.uid).once('value');
+        if (banSnapshot.val() === true) {
+          isBanned = true;
+          await auth.signOut();
+          showError('Tumhe ban kiya gaya hai.');
+          activeUid = null;
+          return;
+        }
+        isBanned = false;
+        $('join').style.display = 'none';
+        $('app').style.display = 'flex';
+        $('welcome').textContent = 'Logged in as ' + currentProfile.username;
+        renderMyAvatar();
+        applySavedBackground();
+        await startPresence(user, currentProfile.username);
+        attachLiveData(user.uid);
+        if (isAdmin) attachAdminData();
+      } catch (error) {
+        showError(friendlyError(error));
+        activeUid = null;
+        try { await auth.signOut(); } catch (_) {}
+      }
+    }
+
+    function attachLiveData(uid) {
+      db.ref('online').on('value', snapshot => {
+        const people = snapshot.val() || {};
+        const names = Object.values(people).filter(Boolean);
+        $('online').textContent = '● Online (' + names.length + '): ' + names.join(', ');
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('users').on('value', snapshot => {
+        allProfiles = snapshot.val() || {};
+        renderMembers();
+        renderMyAvatar();
+        if (lastMessages.length) drawAllMessages(lastMessages);
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('messages').limitToLast(100).on('value', snapshot => {
+        const messages = [];
+        snapshot.forEach(child => {
+          const value = child.val();
+          if (value && typeof value.text === 'string') messages.push({key:child.key, ...value});
+        });
+        lastMessages = messages;
+        drawAllMessages(messages);
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(messages)); } catch (_) {}
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('bans/' + uid).on('value', async snapshot => {
+        if (snapshot.val() === true && !isBanned) {
+          isBanned = true;
+          updateChatControls();
+          showError('Tumhe ban kiya gaya hai.');
+          try { await auth.signOut(); } catch (_) {}
+          activeUid = null;
+        }
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('mutes/' + uid).on('value', snapshot => {
+        const value = snapshot.val();
+        muteUntil = value && Number(value.until) > Date.now() ? Number(value.until) : 0;
+        updateChatControls();
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('settings/chatEnabled').on('value', snapshot => {
+        chatEnabled = snapshot.val() !== false;
+        if (isAdmin) $('notice').style.display = 'none';
+        else {
+          $('notice').style.display = chatEnabled ? 'none' : 'block';
+          $('notice').textContent = chatEnabled ? '' : 'Admin ne filhaal chat pause kiya hai.';
+        }
+        updateChatControls();
+      }, error => showStatus(friendlyError(error)));
+
+      db.ref('.info/connected').on('value', snapshot => {
+        $('connection').textContent = snapshot.val() ? 'Connected' : 'Reconnecting...';
+        $('connection').style.color = snapshot.val() ? '#57d69b' : '#ffd27a';
+      });
+    }
+
+    function drawAllMessages(messages) {
+      const box = $('msgs');
+      box.replaceChildren();
+      messages.forEach(message => drawMessage(message, box));
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function drawMessage(message, box) {
+      const row = document.createElement('div');
+      const mine = !!(currentUser && message.uid === currentUser.uid);
+      row.className = 'msg-row' + (mine ? ' mine' : '');
+      const avatar = document.createElement('div');
+      avatar.className = 'msg-avatar';
+      const profile = allProfiles[message.uid] || {};
+      if (profile.avatar) {
+        const img = document.createElement('img'); img.src = profile.avatar; img.alt = '';
+        avatar.appendChild(img);
+      } else avatar.textContent = String(message.user || '?').slice(0,1).toUpperCase();
+      const item = document.createElement('article');
+      item.className = 'msg' + (mine ? ' me' : '');
+      item.dataset.key = message.key;
+      const name = document.createElement('b');
+      name.textContent = message.user || 'Unknown';
+      const content = document.createElement('span');
+      content.textContent = message.text || '';
+      const stamp = document.createElement('span');
+      stamp.className = 'stamp';
+      const time = Number(message.ts);
+      stamp.textContent = Number.isFinite(time) && time > 0 ? new Date(time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+      item.append(name, content, stamp);
+      if (isAdmin) {
+        const del = document.createElement('button');
+        del.className = 'delete-msg';
+        del.type = 'button';
+        del.textContent = '🗑';
+        del.title = 'Delete message';
+        del.addEventListener('click', async () => {
+          if (!confirm('Is message ko delete karna hai?')) return;
+          try {
+            await db.ref('messages/' + message.key).remove();
+            adminFeedback('Message delete ho gaya.');
+          } catch (error) { adminFeedback(friendlyError(error), true); }
+        });
+        item.appendChild(del);
+      }
+      row.append(avatar, item);
+      box.appendChild(row);
+    }
+
+    async function sendMessage() {
+      const text = $('text').value.trim();
+      if (!text || !currentUser || !currentProfile || isBanned || muteUntil > Date.now() || !chatEnabled) return;
+      $('send').disabled = true;
+      try {
+        await db.ref('messages').push({
+          uid: currentUser.uid,
+          user: currentProfile.username,
+          text: text.slice(0, 1000),
+          ts: firebase.database.ServerValue.TIMESTAMP
+        });
+        $('text').value = '';
+        showStatus('');
+      } catch (error) {
+        showStatus(friendlyError(error));
+      } finally {
+        updateChatControls();
+      }
+    }
+    $('send').addEventListener('click', sendMessage);
+    $('text').addEventListener('keydown', event => { if (event.key === 'Enter') sendMessage(); });
+
+
+    function setAvatar(el, data, fallback) {
+      el.replaceChildren();
+      if (data) {
+        const img = document.createElement('img'); img.src = data; img.alt = 'Profile picture';
+        el.appendChild(img);
+      } else el.textContent = fallback || 'D';
+    }
+    function renderMyAvatar() {
+      if (!currentUser || !currentProfile) return;
+      const profile = allProfiles[currentUser.uid] || currentProfile;
+      currentProfile = {...currentProfile, ...profile};
+      setAvatar($('myAvatar'), currentProfile.avatar, currentProfile.username?.slice(0,1).toUpperCase() || 'D');
+    }
+    function renderMembers() {
+      const list = $('membersList');
+      if (!list) return;
+      list.replaceChildren();
+      const entries = Object.entries(allProfiles || {}).sort((a,b) =>
+        String(a[1]?.username || '').localeCompare(String(b[1]?.username || '')));
+      $('membersCount').textContent = entries.length + ' registered members';
+      entries.forEach(([uid, profile]) => {
+        const row = document.createElement('div'); row.className = 'member-row';
+        const avatar = document.createElement('div'); avatar.className = 'avatar';
+        setAvatar(avatar, profile?.avatar, String(profile?.username || '?').slice(0,1).toUpperCase());
+        const info = document.createElement('div'); info.className = 'member-info';
+        const name = document.createElement('b'); name.textContent = profile?.username || 'Member';
+        const meta = document.createElement('small');
+        const online = adminData.online && Object.prototype.hasOwnProperty.call(adminData.online, uid);
+        meta.textContent = uid === ADMIN_UID ? '👑 Admin' : (online ? '● Online' : 'Offline');
+        meta.style.color = online ? '#55d9a0' : '#9ba9c5';
+        info.append(name, meta); row.append(avatar, info); list.appendChild(row);
+      });
+      if (!entries.length) list.textContent = 'Abhi members nahi mile.';
+    }
+    function applySavedBackground() {
+      let bg = '';
+      try { bg = localStorage.getItem(BG_KEY) || ''; } catch (_) {}
+      document.body.style.backgroundImage = bg ? `url("${bg}")` : '';
+      $('app').style.backgroundImage = bg ? `linear-gradient(#0c1220d9,#0c1220e8),url("${bg}")` : '';
+      $('app').style.backgroundSize = 'cover';
+      $('app').style.backgroundPosition = 'center';
+      $('bgPreview').style.backgroundImage = bg ? `url("${bg}")` : '';
+    }
+    function imageToDataURL(file, maxSize, quality) {
+      return new Promise((resolve, reject) => {
+        if (!file || !file.type.startsWith('image/')) return reject(new Error('Valid image choose karo.'));
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Image read nahi hui.'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('Image open nahi hui.'));
+          img.onload = () => {
+            const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    function openSettings() {
+      $('menuPanel').classList.remove('open');
+      $('settingsModal').classList.add('open');
+      applySavedBackground();
+    }
+    $('menuOpen').addEventListener('click', () => $('menuPanel').classList.toggle('open'));
+    $('menuAdmin').addEventListener('click', () => {
+      $('menuPanel').classList.remove('open');
+      if (isAdmin) $('adminPanel').style.display = 'block';
+      else showStatus('Admin panel sirf admin ke liye hai.');
+    });
+    $('changeDP').addEventListener('click', openSettings);
+    $('changeBG').addEventListener('click', openSettings);
+    $('resetBG').addEventListener('click', () => {
+      try { localStorage.removeItem(BG_KEY); } catch (_) {}
+      applySavedBackground(); $('menuPanel').classList.remove('open');
+    });
+    $('logoutMenu').addEventListener('click', () => $('out').click());
+    $('membersOpen').addEventListener('click', () => {
+      $('menuPanel').classList.remove('open');
+      $('membersModal').classList.add('open');
+      renderMembers();
+    });
+    $('membersClose').addEventListener('click', () => $('membersModal').classList.remove('open'));
+    $('settingsClose').addEventListener('click', () => $('settingsModal').classList.remove('open'));
+    ['membersModal','settingsModal'].forEach(id => $(id).addEventListener('click', e => {
+      if (e.target === $(id)) $(id).classList.remove('open');
+    }));
+    $('dpFile').addEventListener('change', async e => {
+      const file = e.target.files && e.target.files[0]; if (!file || !currentUser) return;
+      $('customMsg').textContent = 'DP save ho rahi hai...';
+      try {
+        const data = await imageToDataURL(file, 180, .72);
+        await db.ref('users/' + currentUser.uid + '/avatar').set(data);
+        currentProfile = {...currentProfile, avatar:data};
+        allProfiles[currentUser.uid] = {...(allProfiles[currentUser.uid] || {}), avatar:data};
+        renderMyAvatar(); renderMembers(); if (lastMessages.length) drawAllMessages(lastMessages);
+        $('customMsg').textContent = '✅ DP sabhi members ke liye update ho gayi.';
+      } catch (error) {
+        $('customMsg').textContent = 'DP save nahi hui: ' + friendlyError(error);
+      } finally { e.target.value = ''; }
+    });
+    $('bgFile').addEventListener('change', async e => {
+      const file = e.target.files && e.target.files[0]; if (!file) return;
+      $('customMsg').textContent = 'Background set ho raha hai...';
+      try {
+        const data = await imageToDataURL(file, 1400, .78);
+        localStorage.setItem(BG_KEY, data);
+        applySavedBackground();
+        $('customMsg').textContent = '✅ Background sirf is device par set hua.';
+      } catch (error) {
+        $('customMsg').textContent = 'Background set nahi hua: ' + error.message;
+      } finally { e.target.value = ''; }
+    });
+    function resetBackground() {
+      try { localStorage.removeItem(BG_KEY); } catch (_) {}
+      applySavedBackground(); $('customMsg').textContent = 'Default background restored.';
+    }
+    $('bgReset2').addEventListener('click', resetBackground);
+    $('chatTab').addEventListener('click', () => {
+      $('chatTab').classList.add('active'); $('leaderboardTab').classList.remove('active');
+      $('msgs').scrollTop = $('msgs').scrollHeight;
+    });
+    $('leaderboardTab').addEventListener('click', () => {
+      $('leaderboardTab').classList.add('active'); $('chatTab').classList.remove('active');
+      const toggle = document.querySelector('.lb-toggle');
+      if (toggle) toggle.click();
+      else showStatus('Leaderboard abhi load ho raha hai. Thodi der baad try karo.');
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#menuPanel') && !e.target.closest('#menuOpen')) $('menuPanel').classList.remove('open');
+    });
+
+    function attachAdminData() {
+      ['users','online','bans','mutes'].forEach(path => {
+        db.ref(path).on('value', snapshot => {
+          adminData[path] = snapshot.val() || {};
+          renderAdminUsers();
+          if (path === 'online') renderMembers();
+        }, error => adminFeedback(friendlyError(error), true));
+      });
+    }
+
+    function renderAdminUsers() {
+      if (!isAdmin) return;
+      const box = $('userList');
+      box.replaceChildren();
+      const entries = Object.entries(adminData.users || {}).sort((a,b) => {
+        const an = (a[1] && a[1].username || '').toLowerCase();
+        const bn = (b[1] && b[1].username || '').toLowerCase();
+        return an.localeCompare(bn);
+      });
+      if (!entries.length) {
+        box.textContent = 'Abhi koi registered user nahi mila.';
+        return;
+      }
+      entries.forEach(([uid, profile]) => {
+        const name = profile && profile.username ? profile.username : 'Unknown';
+        const banned = adminData.bans && adminData.bans[uid] === true;
+        const mute = adminData.mutes && adminData.mutes[uid];
+        const muted = mute && Number(mute.until) > Date.now();
+        const online = adminData.online && Object.prototype.hasOwnProperty.call(adminData.online, uid);
+        const row = document.createElement('div');
+        row.className = 'user-row';
+        const top = document.createElement('div');
+        top.className = 'user-top';
+        const label = document.createElement('span');
+        label.className = 'user-name';
+        label.textContent = name + (uid === ADMIN_UID ? ' (Admin)' : '');
+        const state = document.createElement('span');
+        state.textContent = banned ? 'BANNED' : (muted ? 'MUTED' : (online ? '● Online' : 'Offline'));
+        state.style.color = banned ? '#ff8290' : (muted ? '#ffd27a' : (online ? '#57d69b' : '#9aa8c2'));
+        top.append(label, state);
+        const meta = document.createElement('div');
+        meta.className = 'user-meta';
+        meta.textContent = 'UID: ' + uid;
+        row.append(top, meta);
+        if (uid !== ADMIN_UID) {
+          const actions = document.createElement('div');
+          actions.className = 'user-actions';
+          if (banned) {
+            addAdminButton(actions, 'Unban', 'secondary', () => adminAction(uid, 'unban'));
+          } else {
+            addAdminButton(actions, 'Ban', 'danger', () => adminAction(uid, 'ban'));
+          }
+          addAdminButton(actions, 'Mute 10m', 'secondary', () => adminAction(uid, 'mute10'));
+          addAdminButton(actions, 'Mute 1h', 'secondary', () => adminAction(uid, 'mute60'));
+          addAdminButton(actions, 'Unmute', 'secondary', () => adminAction(uid, 'unmute'));
+          row.appendChild(actions);
+        }
+        box.appendChild(row);
+      });
+    }
+
+    function addAdminButton(parent, label, className, action) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.className = className;
+      button.addEventListener('click', action);
+      parent.appendChild(button);
+    }
+
+    async function adminAction(uid, action) {
+      if (!isAdmin || !uid || uid === ADMIN_UID) return;
+      try {
+        if (action === 'ban') {
+          if (!confirm('Is user ko ban karna hai?')) return;
+          await db.ref('bans/' + uid).set(true);
+          adminFeedback('User ban ho gaya.');
+        } else if (action === 'unban') {
+          await db.ref('bans/' + uid).remove();
+          adminFeedback('User unban ho gaya.');
+        } else if (action === 'mute10' || action === 'mute60') {
+          const minutes = action === 'mute10' ? 10 : 60;
+          await db.ref('mutes/' + uid).set({until: Date.now() + minutes * 60 * 1000, by: currentUser.uid});
+          adminFeedback('User ' + minutes + ' minute ke liye mute ho gaya.');
+        } else if (action === 'unmute') {
+          await db.ref('mutes/' + uid).remove();
+          adminFeedback('User unmute ho gaya.');
+        }
+      } catch (error) { adminFeedback(friendlyError(error), true); }
+    }
+
+    $('adminClose').addEventListener('click', () => { $('adminPanel').style.display = 'none'; });
+    $('adminPanel').addEventListener('click', event => {
+      if (event.target === $('adminPanel')) $('adminPanel').style.display = 'none';
+    });
+
+    function showCachedMessages() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+        if (Array.isArray(cached) && cached.length) {
+          lastMessages = cached.slice(-100);
+          drawAllMessages(lastMessages);
+        }
+      } catch (_) {}
+    }
+
+    window.addEventListener('error', event => {
+      const message = event && event.message ? event.message : 'JavaScript error';
+      showError('App error: ' + message);
+    });
+    window.addEventListener('unhandledrejection', event => {
+      showError('App error: ' + friendlyError(event.reason));
+    });
+
+    if (!window.firebase) {
+      showError('Firebase App SDK load nahi hua. Browser internet ya content blocker check karo.');
+      $('go').disabled = true;
+      return;
+    }
+    if (typeof firebase.initializeApp !== 'function') {
+      showError('Firebase App SDK incomplete hai. Page reload karo.');
+      $('go').disabled = true;
+      return;
+    }
+    if (typeof firebase.auth !== 'function') {
+      showError('Firebase Auth SDK load nahi hua. Login abhi available nahi hai.');
+      $('go').disabled = true;
+      return;
+    }
+    if (typeof firebase.database !== 'function') {
+      showError('Firebase Database SDK load nahi hua. Chat start nahi ho sakti.');
+      $('go').disabled = true;
+      return;
+    }
+
+    try {
+      firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      db = firebase.database();
+      auth.onAuthStateChanged(user => {
+        if (!user) {
+          currentUser = null;
+          currentProfile = null;
+          isAdmin = false;
+          if (window.DostoBridge) window.DostoBridge.setUser(null);
+          activeUid = null;
+          $('join').style.display = 'block';
+          $('app').style.display = 'none';
+          return;
+        }
+        if (!busy) startUserSession(user);
+      });
+      showCachedMessages();
+    } catch (error) {
+      showError('Firebase start nahi hua: ' + friendlyError(error));
+    }
+  })();
+  </script>
+</body>
+</html>
