@@ -1,4 +1,11 @@
 {
   "version": 1,
-  "features": []
+  "features": [
+    {
+      "id": "leaderboard",
+      "title": "🏆 Ultimate Leaderboard",
+      "module": "./features/leaderboard/feature.js",
+      "requiresLogin": true
+    }
+  ]
 }
