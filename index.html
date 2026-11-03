@@ -67,7 +67,17 @@ const B = "https://www.gstatic.com/firebasejs/10.12.2/";
 let initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut;
 let getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp;
 try {
-  const [a, b, c] = await Promise.all([import(B + "firebase-app.js"), import(B + "firebase-auth.js"), import(B + "firebase-database.js")]);
+  const SRC = [
+    [B + "firebase-app.js", B + "firebase-auth.js", B + "firebase-database.js"],
+    ["https://cdn.jsdelivr.net/npm/firebase@10.12.2/app/+esm", "https://cdn.jsdelivr.net/npm/firebase@10.12.2/auth/+esm", "https://cdn.jsdelivr.net/npm/firebase@10.12.2/database/+esm"],
+    ["https://esm.sh/firebase@10.12.2/app", "https://esm.sh/firebase@10.12.2/auth", "https://esm.sh/firebase@10.12.2/database"]
+  ];
+  let a, b, c, lastErr = null;
+  for (const [u1, u2, u3] of SRC) {
+    try { [a, b, c] = await Promise.all([import(u1), import(u2), import(u3)]); lastErr = null; break; }
+    catch (e) { lastErr = e; }
+  }
+  if (lastErr) throw lastErr;
   ({ initializeApp } = a);
   ({ getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } = b);
   ({ getDatabase, ref, push, set, onValue, onChildAdded, onChildRemoved, remove, onDisconnect, query, limitToLast, serverTimestamp } = c);
