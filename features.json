@@ -7,9 +7,9 @@
       "requiresLogin": true
     },
     {
-      "id": "profile-typing",
-      "title": "Profile and Typing",
-      "module": "./features/profile/feature.js?v=3",
+      "id": "profile-hub",
+      "title": "Profile Hub",
+      "module": "./features/profile-hub/feature.js?v=1",
       "requiresLogin": true
     }
   ]
