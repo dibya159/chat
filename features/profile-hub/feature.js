@@ -60,7 +60,9 @@ export default function ({ root, getUser, on }) {
   .pf-hero h2{margin:6px 0 0;font-size:22px;overflow-wrap:anywhere}
   .pf-av{border-radius:50%;overflow:hidden;display:grid;place-items:center;flex:none;background:linear-gradient(135deg,#626fff,#a06cff);border:3px solid #7d83ff;color:#fff;font-weight:900}
   .pf-av img{width:100%;height:100%;object-fit:cover}
-  .pf-tier{padding:5px 12px;border-radius:99px;background:#29345b;border:1px solid #4656a0;font-size:12px;font-weight:800}
+.pf-avwrap{position:relative}
+  .pf-plus{position:absolute;right:-2px;bottom:-2px;width:36px;height:36px;border-radius:50%;padding:0;font-size:24px;line-height:1;font-weight:900;border:3px solid #0c1220;display:grid;place-items:center}
+    .pf-tier{padding:5px 12px;border-radius:99px;background:#29345b;border:1px solid #4656a0;font-size:12px;font-weight:800}
   .pf-stats{display:grid;gap:8px;margin:8px 0 12px}
   .pf-stat{background:#1a2438;border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center}
   .pf-stat b{display:block;font-size:18px}.pf-stat span{font-size:10px;color:var(--muted)}
@@ -159,9 +161,16 @@ export default function ({ root, getUser, on }) {
   function statBox(value, label) {
     const d = el('div', 'pf-stat'); d.append(el('b', '', String(value)), el('span', '', label)); return d;
   }
-  function heroBlock(uid, size, extraLine) {
+  function heroBlock(uid, size, extraLine, withPlus) {
     const h = el('div', 'pf-hero');
-    h.append(avatar(uid, size), el('h2', '', nameOf(uid)));
+    let av = avatar(uid, size);
+    if (withPlus && window.dostoStory) {
+      const w = el('div', 'pf-avwrap'); w.appendChild(av);
+      const p = el('button', 'pf-plus', '+'); p.type = 'button'; p.setAttribute('aria-label', 'Story lagao');
+      p.addEventListener('click', () => window.dostoStory.add());
+      w.appendChild(p); av = w;
+    }
+    h.append(av, el('h2', '', nameOf(uid)));
     if (extraLine) h.appendChild(extraLine);
     return h;
   }
@@ -256,7 +265,7 @@ export default function ({ root, getUser, on }) {
     const tier = tierOf(mine.total);
     const wrap = el('div');
 
-    wrap.appendChild(heroBlock(me.uid, 120, el('div', 'pf-tier', tier.icon + ' ' + tier.name)));
+    wrap.appendChild(heroBlock(me.uid, 120, el('div', 'pf-tier', tier.icon + ' ' + tier.name), true));
     if (tier.next) {
       const pct = Math.min(100, Math.round(((mine.total - tier.min) / (tier.next[0] - tier.min)) * 100));
       const bar = el('div', 'pf-bar'); const fill = el('i'); fill.style.width = pct + '%'; bar.appendChild(fill);
