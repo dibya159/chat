@@ -68,15 +68,16 @@ export default function ({ root, getUser, on }) {
 
   const tab = el('button', 'nav-btn'); tab.type = 'button'; tab.id = 'dmTab';
   const tabBadge = el('span', 'dm-bdg'); tabBadge.hidden = true;
-  tab.append(el('strong', '', '✉️'), 'DM', tabBadge);
-  nav.appendChild(tab);
+  tab.append(el('strong', '', '鉁夛笍'), 'DM', tabBadge);
+  const chatTabEl = $('chatTab');
+  if (chatTabEl) chatTabEl.after(tab); else nav.appendChild(tab); // Chat ke turant baad
   nav.style.gridTemplateColumns = 'none'; nav.style.gridAutoFlow = 'column'; nav.style.gridAutoColumns = '1fr';
 
   const panel = el('section', 'dm-panel'); panel.hidden = true; app.appendChild(panel);
   const listView = el('div', 'dm-list'), rows = el('div', 'dm-rows');
-  listView.append(el('div', 'dm-title', '✉️ Private Messages'), rows);
+  listView.append(el('div', 'dm-title', '鉁夛笍 Private Messages'), rows);
   const chatView = el('div', 'dm-chat'); chatView.hidden = true;
-  const back = el('button', 'dm-back', '←'); back.type = 'button';
+  const back = el('button', 'dm-back', '鈫�'); back.type = 'button';
   let headAv = el('div'); const hName = el('div', 'dm-hn'), hStat = el('div', 'dm-hs');
   const hMid = el('div'); hMid.append(hName, hStat);
   const head = el('div', 'dm-head'); head.append(back, headAv, hMid);
@@ -141,9 +142,9 @@ export default function ({ root, getUser, on }) {
     msgs.forEach(m => {
       if (hidden[m.id]) return;
       const mine = m.from === me.uid, b = el('div', 'dm-b ' + (mine ? 'me' : 'th') + (m.del ? ' del' : ''));
-      b.appendChild(el('div', '', m.del ? '🚫 Ye message delete ho gaya' : String(m.text || '')));
+      b.appendChild(el('div', '', m.del ? '馃毇 Ye message delete ho gaya' : String(m.text || '')));
       const meta = el('div', 'dm-meta', m.ts ? hm(m.ts) : '');
-      if (mine && !m.del) { const seen = peerSeen >= (m.ts || 0) && m.ts; const tk = el('span', 'dm-tk' + (seen ? ' seen' : ''), seen ? ' ✓✓' : ' ✓'); meta.appendChild(tk); }
+      if (mine && !m.del) { const seen = peerSeen >= (m.ts || 0) && m.ts; const tk = el('span', 'dm-tk' + (seen ? ' seen' : ''), seen ? ' 鉁撯湏' : ' 鉁�'); meta.appendChild(tk); }
       b.appendChild(meta);
       b.addEventListener('click', () => openSheet(m));
       msgsEl.appendChild(b);
@@ -230,12 +231,12 @@ export default function ({ root, getUser, on }) {
   function openSheet(m) {
     sheet.replaceChildren();
     const box = el('div'), id = chatId(me.uid, peer), mk = (label, cls, fn) => { const b = el('button', cls, label); b.type = 'button'; b.addEventListener('click', () => { sheet.hidden = true; fn(); }); box.appendChild(b); };
-    mk('🗑️ Delete for me', '', () => db.ref('dmHide/' + me.uid + '/' + id + '/' + m.id).set(true).catch(e => toast(fbErr(e))));
-    if (m.from === me.uid && !m.del) mk('🚫 Delete for everyone', 'dng', async () => {
+    mk('馃棏锔� Delete for me', '', () => db.ref('dmHide/' + me.uid + '/' + id + '/' + m.id).set(true).catch(e => toast(fbErr(e))));
+    if (m.from === me.uid && !m.del) mk('馃毇 Delete for everyone', 'dng', async () => {
       try {
         await db.ref('dmChats/' + id + '/messages/' + m.id).set({ from: me.uid, ts: m.ts, del: true });
         const upd = {};
-        if (inbox[peer] && inbox[peer].ts === m.ts) { upd['dmInbox/' + me.uid + '/' + peer + '/text'] = '🚫 Message deleted'; upd['dmInbox/' + peer + '/' + me.uid + '/text'] = '🚫 Message deleted'; await db.ref().update(upd); }
+        if (inbox[peer] && inbox[peer].ts === m.ts) { upd['dmInbox/' + me.uid + '/' + peer + '/text'] = '馃毇 Message deleted'; upd['dmInbox/' + peer + '/' + me.uid + '/text'] = '馃毇 Message deleted'; await db.ref().update(upd); }
       } catch (e) { toast(fbErr(e)); }
     });
     mk('Cancel', 'sec', () => {});
