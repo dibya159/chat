@@ -9,13 +9,19 @@
     {
       "id": "profile-hub",
       "title": "Profile Hub",
-      "module": "./features/profile-hub/feature.js?v=3",
+      "module": "./features/profile-hub/feature.js?v=4",
       "requiresLogin": true
     },
     {
       "id": "stories",
       "title": "Stories",
       "module": "./features/stories/feature.js?v=2",
+      "requiresLogin": true
+    },
+    {
+      "id": "chat-extras",
+      "title": "Reply and Typing",
+      "module": "./features/chat-extras/feature.js?v=1",
       "requiresLogin": true
     }
   ]
