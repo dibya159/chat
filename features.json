@@ -9,7 +9,7 @@
     {
       "id": "profile-hub",
       "title": "Profile Hub",
-      "module": "./features/profile-hub/feature.js?v=4",
+      "module": "./features/profile-hub/feature.js?v=5",
       "requiresLogin": true
     },
     {
