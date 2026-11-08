@@ -23,6 +23,12 @@
       "title": "Reply and Typing",
       "module": "./features/chat-extras/feature.js?v=1",
       "requiresLogin": true
+    },
+    {
+      "id": "dm",
+      "title": "",
+      "module": "./features/dm/feature.js?v=1",
+      "requiresLogin": true
     }
   ]
 }
