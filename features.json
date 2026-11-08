@@ -27,7 +27,7 @@
     {
       "id": "dm",
       "title": "",
-      "module": "./features/dm/feature.js?v=1",
+      "module": "./features/dm/feature.js?v=2",
       "requiresLogin": true
     }
   ]
