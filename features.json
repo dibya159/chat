@@ -9,7 +9,7 @@
     {
       "id": "profile-hub",
       "title": "Profile Hub",
-      "module": "./features/profile-hub/feature.js?v=5",
+      "module": "./features/profile-hub/feature.js?v=6",
       "requiresLogin": true
     },
     {
@@ -28,6 +28,12 @@
       "id": "dm",
       "title": "",
       "module": "./features/dm/feature.js?v=2",
+      "requiresLogin": true
+    },
+    {
+      "id": "games",
+      "title": "",
+      "module": "./features/games/feature.js?v=1",
       "requiresLogin": true
     }
   ]
