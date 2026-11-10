@@ -72,6 +72,9 @@
     .admin-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.admin-head h2{font-size:17px;margin:0}
     @media(min-width:700px){body{padding:14px}#app{height:calc(100dvh - 28px);border:1px solid var(--line);border-radius:19px}.overlay{position:absolute}}
   </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0c1220">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
   <button id="out" type="button" hidden aria-hidden="true" tabindex="-1">Logout</button>
@@ -789,6 +792,11 @@
       showError('Firebase start nahi hua: ' + friendlyError(error));
     }
   })();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); });
+    }
   </script>
 </body>
 </html>
