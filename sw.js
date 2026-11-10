@@ -2,7 +2,7 @@
    Network-first: hamesha nayi file laata hai, net na ho tabhi purani cache wali dikhata hai.
    Isliye feature updates (?v=) kabhi purani cache mein nahi atkenge. */
 const CACHE = 'dosto-shell-v1';
-const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
+const SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}));
