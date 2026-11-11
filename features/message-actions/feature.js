@@ -1,6 +1,6 @@
 export default async function ({ root, bridge, getUser, on }) {
   let currentUser = getUser();
-  let currentReplyTarget = null; // { author, text }
+  let currentReplyTarget = null;
 
   on('login', (user) => {
     currentUser = user;
@@ -18,7 +18,7 @@ export default async function ({ root, bridge, getUser, on }) {
     const sendBtn = document.getElementById('send');
     if (!msgsContainer || !barContainer || !chatInput) return;
 
-    // 1. Create WhatsApp-style Reply Preview Bar above input
+    // WhatsApp-style reply preview bar above input
     let replyPreviewBar = document.getElementById('waReplyPreviewBar');
     if (!replyPreviewBar) {
       replyPreviewBar = document.createElement('div');
@@ -62,31 +62,28 @@ export default async function ({ root, bridge, getUser, on }) {
       replyPreviewBar.innerHTML = '';
     }
 
-    // 2. Intercept Send to attach WhatsApp-style reply tag
-    const originalSend = () => {
+    const processAndSend = () => {
       const text = chatInput.value.trim();
       if (!text) return;
-
-      let finalMessage = text;
       if (currentReplyTarget) {
         const tag = `[[reply:${currentReplyTarget.author}|${currentReplyTarget.text}]]`;
-        finalMessage = tag + text;
+        chatInput.value = tag + text;
         hideReplyPreview();
       }
-      chatInput.value = finalMessage;
     };
 
-    sendBtn.addEventListener('click', (e) => {
-      originalSend();
-    }, true);
+    if (sendBtn) {
+      sendBtn.addEventListener('click', () => {
+        processAndSend();
+      }, true);
+    }
 
     chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        originalSend();
+        processAndSend();
       }
     }, true);
 
-    // 3. Touch & Swipe & Long Press Handlers
     let touchStartX = 0;
     let touchStartY = 0;
     let activeMsgRow = null;
@@ -100,7 +97,6 @@ export default async function ({ root, bridge, getUser, on }) {
       activeMsgRow = row;
 
       const user = getUser();
-      // Admin/Owner long press (600ms) for delete & reply menu
       if (user && user.isAdmin) {
         longPressTimer = setTimeout(() => {
           showAdminActions(row);
@@ -117,7 +113,6 @@ export default async function ({ root, bridge, getUser, on }) {
         clearTimeout(longPressTimer);
       }
 
-      // Right swipe (>60px) for members & admin/owner to reply
       if (moveX > 60 && Math.abs(moveY) < 30) {
         triggerReply(activeMsgRow);
         activeMsgRow = null;
@@ -129,7 +124,6 @@ export default async function ({ root, bridge, getUser, on }) {
       activeMsgRow = null;
     });
 
-    // Desktop right-click support for admin
     msgsContainer.addEventListener('contextmenu', (e) => {
       const row = e.target.closest('.msg-row');
       const user = getUser();
@@ -168,7 +162,6 @@ export default async function ({ root, bridge, getUser, on }) {
       }
 
       modal.style.display = 'flex';
-
       modal.querySelector('#bridgeReplyBtn').onclick = () => {
         triggerReply(row);
         modal.style.display = 'none';
@@ -186,7 +179,6 @@ export default async function ({ root, bridge, getUser, on }) {
       };
     }
 
-    // 4. MutationObserver to transform raw reply tags into WhatsApp-style Quote UI inside bubbles
     const observer = new MutationObserver(() => {
       formatMessageBubbles();
     });
@@ -198,20 +190,21 @@ export default async function ({ root, bridge, getUser, on }) {
     const messageSpans = document.querySelectorAll('#msgs .msg span');
     messageSpans.forEach(span => {
       const text = span.textContent;
-      const match = text.match(/^\[\[reply:(.*?)\|(.*?)\]\]([\s\S]*)$/);
-      if (match && !span.dataset.formatted) {
-        span.dataset.formatted = 'true';
-        const author = match[1];
-        const quotedText = match[2];
-        const actualMessage = match[3];
+      if (text.startsWith('[[reply:')) {
+        const match = text.match(/^\[\[reply:(.*?)\|(.*?)\]\]([\s\S]*)$/);
+        if (match) {
+          const author = match[1];
+          const quotedText = match[2];
+          const actualMessage = match[3];
 
-        span.innerHTML = `
-          <div style="background:rgba(0,0,0,0.25); border-left:3px solid #55d9a0; padding:4px 8px; margin-bottom:5px; border-radius:4px; font-size:12px;">
-            <div style="font-weight:bold; color:#55d9a0; margin-bottom:1px;">${escapeHtml(author)}</div>
-            <div style="color:#b0bec5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(quotedText)}</div>
-          </div>
-          <div>${escapeHtml(actualMessage)}</div>
-        `;
+          span.innerHTML = `
+            <div style="background:rgba(0,0,0,0.3); border-left:3px solid #55d9a0; padding:5px 8px; margin-bottom:6px; border-radius:4px; font-size:12px;">
+              <div style="font-weight:bold; color:#55d9a0; margin-bottom:2px;">${escapeHtml(author)}</div>
+              <div style="color:#b0bec5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(quotedText)}</div>
+            </div>
+            <div>${escapeHtml(actualMessage)}</div>
+          `;
+        }
       }
     });
   }
@@ -220,12 +213,11 @@ export default async function ({ root, bridge, getUser, on }) {
     return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(>g, '&gt;')
+      .replace(/>/g, '&gt;') // Fixed syntax error here
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
 
   initFeature();
-
   return () => {};
-                                                                                          }
+}
