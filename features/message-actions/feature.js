@@ -228,4 +228,4 @@ export default async function ({ root, bridge, getUser, on }) {
   initFeature();
 
   return () => {};
-}
+                                                                                          }
