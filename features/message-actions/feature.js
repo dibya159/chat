@@ -1,5 +1,6 @@
 export default async function ({ root, bridge, getUser, on }) {
   let currentUser = getUser();
+  let currentReplyTarget = null; // { author, text }
 
   on('login', (user) => {
     currentUser = user;
@@ -12,8 +13,80 @@ export default async function ({ root, bridge, getUser, on }) {
 
   function initFeature() {
     const msgsContainer = document.getElementById('msgs');
-    if (!msgsContainer) return;
+    const barContainer = document.getElementById('bar');
+    const chatInput = document.getElementById('text');
+    const sendBtn = document.getElementById('send');
+    if (!msgsContainer || !barContainer || !chatInput) return;
 
+    // 1. Create WhatsApp-style Reply Preview Bar above input
+    let replyPreviewBar = document.getElementById('waReplyPreviewBar');
+    if (!replyPreviewBar) {
+      replyPreviewBar = document.createElement('div');
+      replyPreviewBar.id = 'waReplyPreviewBar';
+      replyPreviewBar.style.cssText = `
+        display: none;
+        align-items: center;
+        background: #1a2438;
+        border-left: 4px solid #6d75ff;
+        padding: 8px 12px;
+        margin: 0 10px 8px 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        position: absolute;
+        bottom: 60px;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      `;
+      barContainer.parentNode.insertBefore(replyPreviewBar, barContainer);
+    }
+
+    function showReplyPreview(author, text) {
+      currentReplyTarget = { author, text };
+      replyPreviewBar.style.display = 'flex';
+      replyPreviewBar.innerHTML = `
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:bold; color:#6d75ff; font-size:12px; margin-bottom:2px;">Replying to ${escapeHtml(author)}</div>
+          <div style="color:#9ba9c5; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(text)}</div>
+        </div>
+        <button id="waCancelReply" style="background:transparent; border:0; color:#9ba9c5; font-size:16px; cursor:pointer; padding:4px 8px;">✕</button>
+      `;
+      replyPreviewBar.querySelector('#waCancelReply').onclick = hideReplyPreview;
+      chatInput.focus();
+    }
+
+    function hideReplyPreview() {
+      currentReplyTarget = null;
+      replyPreviewBar.style.display = 'none';
+      replyPreviewBar.innerHTML = '';
+    }
+
+    // 2. Intercept Send to attach WhatsApp-style reply tag
+    const originalSend = () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      let finalMessage = text;
+      if (currentReplyTarget) {
+        const tag = `[[reply:${currentReplyTarget.author}|${currentReplyTarget.text}]]`;
+        finalMessage = tag + text;
+        hideReplyPreview();
+      }
+      chatInput.value = finalMessage;
+    };
+
+    sendBtn.addEventListener('click', (e) => {
+      originalSend();
+    }, true);
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        originalSend();
+      }
+    }, true);
+
+    // 3. Touch & Swipe & Long Press Handlers
     let touchStartX = 0;
     let touchStartY = 0;
     let activeMsgRow = null;
@@ -27,7 +100,7 @@ export default async function ({ root, bridge, getUser, on }) {
       activeMsgRow = row;
 
       const user = getUser();
-      // Admin/Owner ke liye long press (600ms) par delete & reply menu khulega
+      // Admin/Owner long press (600ms) for delete & reply menu
       if (user && user.isAdmin) {
         longPressTimer = setTimeout(() => {
           showAdminActions(row);
@@ -44,7 +117,7 @@ export default async function ({ root, bridge, getUser, on }) {
         clearTimeout(longPressTimer);
       }
 
-      // Members aur Admin/Owner dono ke liye Right Swipe (>60px) par reply trigger hoga
+      // Right swipe (>60px) for members & admin/owner to reply
       if (moveX > 60 && Math.abs(moveY) < 30) {
         triggerReply(activeMsgRow);
         activeMsgRow = null;
@@ -56,7 +129,7 @@ export default async function ({ root, bridge, getUser, on }) {
       activeMsgRow = null;
     });
 
-    // Desktop testing ke liye right click support
+    // Desktop right-click support for admin
     msgsContainer.addEventListener('contextmenu', (e) => {
       const row = e.target.closest('.msg-row');
       const user = getUser();
@@ -65,59 +138,91 @@ export default async function ({ root, bridge, getUser, on }) {
         showAdminActions(row);
       }
     });
-  }
 
-  function triggerReply(row) {
-    const msgArticle = row.querySelector('.msg');
-    const msgText = msgArticle ? msgArticle.querySelector('span')?.textContent : '';
-    const msgAuthor = msgArticle ? msgArticle.querySelector('b')?.textContent : 'User';
-    
-    const chatInput = document.getElementById('text');
-    if (chatInput) {
-      chatInput.value = `[Replying to ${msgAuthor}: "${msgText.slice(0, 30)}..."] `;
-      chatInput.focus();
-    }
-  }
-
-  function showAdminActions(row) {
-    const msgKey = row.querySelector('.msg')?.dataset?.key;
-    const actionModalId = 'bridgeActionModal';
-    
-    let modal = document.getElementById(actionModalId);
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = actionModalId;
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;';
-      modal.innerHTML = `
-        <div style="background:#151e30;padding:20px;border-radius:15px;width:280px;border:1px solid #394866;text-align:center;">
-          <h3 style="margin-top:0;font-size:16px;color:#f1f3ff;">Admin Options</h3>
-          <button id="bridgeReplyBtn" style="width:100%;margin-bottom:8px;background:#6d75ff;">Reply</button>
-          <button id="bridgeDelBtn" style="width:100%;background:#a83d52;">Delete Message</button>
-          <button id="bridgeCloseBtn" style="width:100%;margin-top:8px;background:#303b50;">Cancel</button>
-        </div>
-      `;
-      document.body.appendChild(modal);
-
-      modal.querySelector('#bridgeCloseBtn').onclick = () => modal.remove();
+    function triggerReply(row) {
+      const msgArticle = row.querySelector('.msg');
+      const msgText = msgArticle ? msgArticle.querySelector('span')?.textContent : '';
+      const msgAuthor = msgArticle ? msgArticle.querySelector('b')?.textContent : 'User';
+      showReplyPreview(msgAuthor, msgText);
     }
 
-    modal.style.display = 'flex';
-
-    modal.querySelector('#bridgeReplyBtn').onclick = () => {
-      triggerReply(row);
-      modal.style.display = 'none';
-    };
-
-    modal.querySelector('#bridgeDelBtn').onclick = async () => {
-      modal.style.display = 'none';
-      if (msgKey && window.firebase) {
-        try {
-          await firebase.database().ref('messages/' + msgKey).remove();
-        } catch (err) {
-          console.error('Delete failed', err);
-        }
+    function showAdminActions(row) {
+      const msgKey = row.querySelector('.msg')?.dataset?.key;
+      const actionModalId = 'bridgeActionModal';
+      
+      let modal = document.getElementById(actionModalId);
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = actionModalId;
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;';
+        modal.innerHTML = `
+          <div style="background:#151e30;padding:20px;border-radius:15px;width:280px;border:1px solid #394866;text-align:center;">
+            <h3 style="margin-top:0;font-size:16px;color:#f1f3ff;">Admin Options</h3>
+            <button id="bridgeReplyBtn" style="width:100%;margin-bottom:8px;background:#6d75ff;">Reply</button>
+            <button id="bridgeDelBtn" style="width:100%;background:#a83d52;">Delete Message</button>
+            <button id="bridgeCloseBtn" style="width:100%;margin-top:8px;background:#303b50;">Cancel</button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        modal.querySelector('#bridgeCloseBtn').onclick = () => modal.remove();
       }
-    };
+
+      modal.style.display = 'flex';
+
+      modal.querySelector('#bridgeReplyBtn').onclick = () => {
+        triggerReply(row);
+        modal.style.display = 'none';
+      };
+
+      modal.querySelector('#bridgeDelBtn').onclick = async () => {
+        modal.style.display = 'none';
+        if (msgKey && window.firebase) {
+          try {
+            await firebase.database().ref('messages/' + msgKey).remove();
+          } catch (err) {
+            console.error('Delete failed', err);
+          }
+        }
+      };
+    }
+
+    // 4. MutationObserver to transform raw reply tags into WhatsApp-style Quote UI inside bubbles
+    const observer = new MutationObserver(() => {
+      formatMessageBubbles();
+    });
+    observer.observe(msgsContainer, { childList: true, subtree: true });
+    formatMessageBubbles();
+  }
+
+  function formatMessageBubbles() {
+    const messageSpans = document.querySelectorAll('#msgs .msg span');
+    messageSpans.forEach(span => {
+      const text = span.textContent;
+      const match = text.match(/^\[\[reply:(.*?)\|(.*?)\]\]([\s\S]*)$/);
+      if (match && !span.dataset.formatted) {
+        span.dataset.formatted = 'true';
+        const author = match[1];
+        const quotedText = match[2];
+        const actualMessage = match[3];
+
+        span.innerHTML = `
+          <div style="background:rgba(0,0,0,0.25); border-left:3px solid #55d9a0; padding:4px 8px; margin-bottom:5px; border-radius:4px; font-size:12px;">
+            <div style="font-weight:bold; color:#55d9a0; margin-bottom:1px;">${escapeHtml(author)}</div>
+            <div style="color:#b0bec5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(quotedText)}</div>
+          </div>
+          <div>${escapeHtml(actualMessage)}</div>
+        `;
+      }
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(>g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   initFeature();
