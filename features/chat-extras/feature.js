@@ -1,6 +1,7 @@
 /* Dosto ka Chat - Chat Extras
    1) Reply: har message ke bagal mein chhota ↩ arrow, reply quote bubble ke andar dikhta hai.
    2) Typing: WhatsApp jaisa "bablu typing..." bubble (3 dots) chat ke neeche.
+   3) Right Swipe to Reply: Message row ko right swipe karne par reply start ho jata hai.
    index.html ko chhedna nahi padta. */
 export default function ({ root, getUser, on }) {
   const TAG_RE = /^⟦r:[A-Za-z0-9_-]+⟧/;
@@ -34,7 +35,8 @@ export default function ({ root, getUser, on }) {
   .tp-dots{display:inline-flex;gap:3px}
   .tp-dots i{width:5px;height:5px;border-radius:50%;background:#9fb0ff;animation:tpb 1s infinite}
   .tp-dots i:nth-child(2){animation-delay:.15s}.tp-dots i:nth-child(3){animation-delay:.3s}
-  @keyframes tpb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}`;
+  @keyframes tpb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+  .msg-row{transition:transform 0.15s ease};`;
   root.appendChild(style);
 
   // ---------- shell ----------
@@ -88,12 +90,55 @@ export default function ({ root, getUser, on }) {
     setTimeout(() => art.classList.remove('rp-flash'), 2300);
   }
 
+  // ---------- Swipe to Reply Handler ----------
+  function initSwipe(row, key) {
+    let startX = 0, startY = 0, currentX = 0, isSwiping = false;
+
+    row.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isSwiping = true;
+      currentX = 0;
+    }, { passive: true });
+
+    row.addEventListener('touchmove', e => {
+      if (!isSwiping) return;
+      currentX = e.touches[0].clientX - startX;
+      const currentY = e.touches[0].clientY - startY;
+      
+      // Agar vertical scroll jyada ho raha hai toh swipe cancel kar do
+      if (Math.abs(currentY) > Math.abs(currentX)) {
+        isSwiping = false;
+        row.style.transform = '';
+        return;
+      }
+
+      // Sirf right swipe allow karein (positive X)
+      if (currentX > 0 && currentX < 120) {
+        row.style.transform = `translateX(${currentX}px)`;
+      }
+    }, { passive: true });
+
+    row.addEventListener('touchend', () => {
+      if (!isSwiping) return;
+      isSwiping = false;
+      row.style.transform = '';
+      if (currentX > 60) {
+        startReply(key);
+      }
+    });
+  }
+
   function decorate(row) {
     if (row.dataset.ce) return;
     row.dataset.ce = '1';
     const art = row.querySelector('article.msg');
     if (!art) return;
     const key = art.dataset.key;
+    
+    // Enable Swipe to Reply on the row
+    initSwipe(row, key);
+
     const content = art.querySelector(':scope > span:not(.stamp)');
     if (content) {
       const fc = content.firstChild;
