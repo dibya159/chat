@@ -101,7 +101,8 @@ export default function ({ root, getUser, on }) {
       ai: { usage: 'sawaal', help: 'Gemini AI se kuch bhi poochein', usageErr: 'Aise likho: /ai India ka capital kya hai?', run: async q => {
         if (!q.trim()) throw new Error('usage');
         // Yahan apna Cloudflare Worker ka actual URL daalna hai
-        const WORKER_URL = 'lucky-sun-3d6a.nhazarika350.workers.dev';
+        const WORKER_URL = 'https://lucky-sun-3d6a.nhazarika350.workers.dev
+.dev';
         try {
           const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
           const r = await fetch(WORKER_URL, {
