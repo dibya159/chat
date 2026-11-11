@@ -1,3 +1,4 @@
+
 {
   "features": [
     {
@@ -53,6 +54,12 @@
       "title": "Dosto Bots & AI",
       "module": "./features/bots/feature.js?v=1",
       "requiresLogin": false
+    },
+    {
+      "id": "owner-admin",
+      "title": "Owner / Admin Control Center",
+      "module": "./features/owner-admin/feature.js?v=1",
+      "requiresLogin": true
     }
   ]
 }
