@@ -1,5 +1,5 @@
 /* Dosto ka Chat - Bots (Telegram jaise commands, bilkul free)
-   Chat mein "/" se shuru hone wala message bot command hota hai (jaise /weather Delhi, /ai [sawaal]).
+   Chat mein "/" se shuru hone wala message bot command होता hai (jaise /weather Delhi, /ai [sawaal]).
    Jawab bot ke naam se message ke neeche dikhta hai.
 */
 export default function ({ root, getUser, on }) {
@@ -100,22 +100,32 @@ export default function ({ root, getUser, on }) {
       } },
       ai: { usage: 'sawaal', help: 'Gemini AI se kuch bhi poochein', usageErr: 'Aise likho: /ai India ka capital kya hai?', run: async q => {
         if (!q.trim()) throw new Error('usage');
-        // Yahan Cloudflare Worker ka actual clean URL set hai
-        const WORKER_URL = 'https://lucky-sun-3d6a.nhazarika350.workers.dev';
+        
+        // Seedha frontend se Gemini API call (No backend / no Netlify hassle)
+        const apiKey = "AQ.Ab8RN6IDN1kk-IvGQ9ynX9wQhyM0FIJUC1sXa4pKB5jwuzkKHg";
+        const apiURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+
         try {
           const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
-          const r = await fetch(WORKER_URL, {
+          const r = await fetch(apiURL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: q }),
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: q }] }]
+            }),
             signal: ctl.signal
           });
           clearTimeout(t);
           if (!r.ok) throw new Error('HTTP ' + r.status);
           const data = await r.json();
-          return '🤖 ' + (data.reply || 'No response from AI.');
+          
+          let reply = "No response from AI.";
+          if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+            reply = data.candidates[0].content.parts[0].text;
+          }
+          return '🤖 ' + reply;
         } catch (err) {
-          return '❌ AI se connect karne mein error aaya. Worker URL check karein.';
+          return '❌ AI se connect karne mein error aaya: ' + err.message;
         }
       } },
       weather: { usage: 'sheher', help: 'Mausam', usageErr: 'Aise likho: /weather Delhi', run: async c => {
@@ -250,5 +260,4 @@ export default function ({ root, getUser, on }) {
     if (input) input.removeEventListener('input', inputListener);
     [style, sug].forEach(n => n.remove());
   };
-           }
-       
+       }
