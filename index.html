@@ -165,7 +165,7 @@
   </section>
 
   <!-- Feature bridge: future modules load from features.json without editing this page again. -->
-  <script src="./bridge.js" defer onerror="console.warn('bridge.js optional file missing')"></script>
+  <script src="./bridge.js?v=20261111-2" defer onerror="console.error('BRIDGE SCRIPT LOAD FAILED')"></script>
 
   <!-- Firebase Compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" onerror="document.getElementById('err').textContent='Firebase App SDK load nahi hua. Internet ya browser content blocker check karo.'"></script>
