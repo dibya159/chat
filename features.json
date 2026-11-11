@@ -1,4 +1,3 @@
-
 {
   "features": [
     {
@@ -32,6 +31,12 @@
       "requiresLogin": true
     },
     {
+      "id": "message-actions",
+      "title": "Message Actions",
+      "module": "./features/message-actions/feature.js?v=1",
+      "requiresLogin": true
+    },
+    {
       "id": "dm",
       "title": "",
       "module": "./features/dm/feature.js?v=3",
@@ -42,18 +47,6 @@
       "title": "",
       "module": "./features/games/feature.js?v=1",
       "requiresLogin": true
-    },
-    {
-      "id": "premium-animations",
-      "title": "",
-      "module": "./features/animations/feature.js?v=2",
-      "requiresLogin": false
-    },
-    {
-      "id": "bots",
-      "title": "Dosto Bots & AI",
-      "module": "./features/bots/feature.js?v=1",
-      "requiresLogin": false
     },
     {
       "id": "owner-admin",
