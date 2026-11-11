@@ -47,6 +47,12 @@
       "title": "",
       "module": "./features/animations/feature.js?v=2",
       "requiresLogin": false
+    },
+    {
+      "id": "bots",
+      "title": "Dosto Bots & AI",
+      "module": "./features/bots/feature.js?v=1",
+      "requiresLogin": false
     }
   ]
 }
