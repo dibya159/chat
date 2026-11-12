@@ -2,8 +2,6 @@
    Works 100% automatically with Firebase without touching existing files.
 */
 export default function initNotifications({ root, getUser, on }) {
-  'use strict';
-
   // Hide the empty feature container so it doesn't clutter the page
   if (root) root.style.display = 'none';
 
