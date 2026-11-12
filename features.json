@@ -53,6 +53,12 @@
       "title": "Owner / Admin Control Center",
       "module": "./features/owner-admin/feature.js?v=1",
       "requiresLogin": true
+    },
+    {
+      "id": "notifications",
+      "title": "",
+      "module": "./features/notifications/feature.js?v=1",
+      "requiresLogin": true
     }
   ]
 }
