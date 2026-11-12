@@ -1,4 +1,4 @@
-/* Dosto ka Chat - Media Sharing (Photos Max 5MB + GIFs + Delete, No Storage Needed) */
+/* Dosto ka Chat - Media Sharing (Photos Max 5MB + Live GIPHY GIFs + Delete) */
 export default function ({ getUser, on }) {
   const $ = id => document.getElementById(id);
   const app = $('app'), bar = $('bar'), msgsBox = $('msgs');
@@ -7,10 +7,10 @@ export default function ({ getUser, on }) {
   const ADMIN_UID = 'TkdZFaOuM8huIE3I5l6TSWHfHnY2';
   const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB max input
   const ALLOWED_IMG = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-  const GIPHY_KEY_STORAGE = 'dosto_giphy_api_key_v1';
+  const GIPHY_API_KEY = 'BBk0f30cX5HjwA9TToSxJSfJw013BmLh';
 
   let me = null, db = null, users = {}, groupMsgs = [];
-  let activeSendHandler = null;
+  let activeSendHandler = null, trendingCache = null;
   const offs = [], uiOffs = [];
 
   const el = (tag, cls, txt) => {
@@ -46,7 +46,7 @@ export default function ({ getUser, on }) {
         const rawUrl = reader.result;
         if (file.type === 'image/gif') {
           if (file.size > 2 * 1024 * 1024) {
-            reject(new Error('Animated GIF 2 MB se chhoti rakhein (ya GIF link use karein).'));
+            reject(new Error('Animated GIF 2 MB se chhoti rakhein.'));
             return;
           }
           resolve(rawUrl);
@@ -91,8 +91,9 @@ export default function ({ getUser, on }) {
   .ms-card{width:min(440px,100%);max-height:85dvh;display:flex;flex-direction:column;gap:10px;background:#151e30;border:1px solid #394866;border-radius:18px;padding:14px}
   .ms-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .ms-head b{font-size:16px}
-  .ms-gifs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;overflow-y:auto;max-height:46dvh}
-  .ms-gifs img{width:100%;height:120px;object-fit:cover;border-radius:10px;cursor:pointer;background:#0c1220}
+  .ms-gifs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;overflow-y:auto;max-height:55dvh}
+  .ms-gifs img{width:100%;height:125px;object-fit:cover;border-radius:10px;cursor:pointer;background:#0c1220}
+  .ms-note{grid-column:1/-1;text-align:center;color:#9ba9c5;font-size:13px;padding:18px 8px}
   .ms-toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#222c45;color:#fff;padding:9px 14px;border-radius:12px;font-size:13px;z-index:10070;display:none;max-width:90vw;text-align:center}
   .ms-toast.show{display:block}
   .ms-light{position:fixed;inset:0;z-index:10080;background:#000e;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -134,7 +135,7 @@ export default function ({ getUser, on }) {
 
   const gifBtn = el('button', 'ms-opt');
   gifBtn.type = 'button';
-  gifBtn.append(el('span', '', '🎞️ GIFs'), el('small', '', 'Search / Link / File'));
+  gifBtn.append(el('span', '', '🎞️ GIFs'), el('small', '', 'Search & Send'));
 
   grid.append(photoBtn, gifBtn);
   sheet.append(grid, fileInput);
@@ -147,85 +148,73 @@ export default function ({ getUser, on }) {
   const gifHead = el('div', 'ms-head');
   const gifClose = el('button', 'secondary', 'Close');
   gifClose.type = 'button';
-  gifHead.append(el('b', '', '🎞️ GIF Bhejo'), gifClose);
+  gifHead.append(el('b', '', '🎞️ GIFs'), gifClose);
 
   const gifSearchIn = el('input');
-  gifSearchIn.placeholder = 'GIF search karo (e.g. funny, hi, party)...';
+  gifSearchIn.placeholder = 'GIF search karo (e.g. funny, hi, love)...';
   const gifResults = el('div', 'ms-gifs');
 
-  const gifUrlIn = el('input');
-  gifUrlIn.placeholder = 'Ya direct .gif link paste karo (https://...)';
-  const gifUrlSend = el('button', '', 'Link se GIF Bhejo');
-  gifUrlSend.type = 'button';
-
-  const gifKeyIn = el('input');
-  gifKeyIn.placeholder = 'GIPHY API Key (optional, ek baar save karein)';
-  gifKeyIn.value = localStorage.getItem(GIPHY_KEY_STORAGE) || '';
-
-  gifCard.append(gifHead, gifSearchIn, gifResults, gifUrlIn, gifUrlSend, gifKeyIn);
+  gifCard.append(gifHead, gifSearchIn, gifResults);
   gifModal.appendChild(gifCard);
   document.body.appendChild(gifModal);
 
   listen(gifClose, 'click', () => { gifModal.hidden = true; });
-  listen(gifKeyIn, 'change', () => {
-    localStorage.setItem(GIPHY_KEY_STORAGE, gifKeyIn.value.trim());
-    toast('GIPHY API key save ho gayi!');
-  });
+
+  function renderGifItems(items) {
+    if (!items.length) {
+      gifResults.replaceChildren(el('div', 'ms-note', 'Koi GIF nahi mila.'));
+      return;
+    }
+    gifResults.replaceChildren();
+    items.forEach(item => {
+      const url = item.images && (item.images.fixed_width?.url || item.images.original?.url);
+      if (!safeUrl(url)) return;
+      const img = el('img');
+      img.src = url;
+      img.alt = item.title || 'GIF';
+      img.loading = 'lazy';
+      img.addEventListener('click', async () => {
+        gifModal.hidden = true;
+        if (activeSendHandler) await activeSendHandler({ mediaUrl: url, mediaType: 'gif' });
+      });
+      gifResults.appendChild(img);
+    });
+  }
 
   let searchTimer = 0;
   async function loadGifs(query) {
-    const key = (gifKeyIn.value || '').trim();
-    if (!key) {
-      gifResults.replaceChildren(el('div', '', 'Live GIF search ke liye apni free GIPHY API key niche paste karein, ya upar direct GIF link daalein.'));
+    if (!query && trendingCache) {
+      renderGifItems(trendingCache);
       return;
     }
-    gifResults.replaceChildren(el('div', '', 'GIFs load ho rahe hain...'));
+    gifResults.replaceChildren(el('div', 'ms-note', 'GIFs load ho rahe hain...'));
     try {
       const endpoint = query
-        ? `https://api.giphy.com/v1/gifs/search?api_key=${encodeURIComponent(key)}&q=${encodeURIComponent(query)}&limit=16&rating=pg-13`
-        : `https://api.giphy.com/v1/gifs/trending?api_key=${encodeURIComponent(key)}&limit=16&rating=pg-13`;
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${encodeURIComponent(GIPHY_API_KEY)}&q=${encodeURIComponent(query)}&limit=18&rating=pg-13`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${encodeURIComponent(GIPHY_API_KEY)}&limit=18&rating=pg-13`;
       const res = await fetch(endpoint);
       const data = await res.json();
       const items = (data && data.data) || [];
-      if (!items.length) {
-        gifResults.replaceChildren(el('div', '', 'Koi GIF nahi mila.'));
-        return;
-      }
-      gifResults.replaceChildren();
-      items.forEach(item => {
-        const url = item.images && (item.images.fixed_width?.url || item.images.original?.url);
-        if (!safeUrl(url)) return;
-        const img = el('img');
-        img.src = url;
-        img.alt = item.title || 'GIF';
-        img.loading = 'lazy';
-        img.addEventListener('click', async () => {
-          gifModal.hidden = true;
-          if (activeSendHandler) await activeSendHandler({ mediaUrl: url, mediaType: 'gif' });
-        });
-        gifResults.appendChild(img);
-      });
+      if (!query && items.length) trendingCache = items;
+      renderGifItems(items);
     } catch {
-      gifResults.replaceChildren(el('div', '', 'GIF load karne me error aaya.'));
+      gifResults.replaceChildren(el('div', 'ms-note', 'GIF load karne me error aaya.'));
     }
   }
 
   listen(gifSearchIn, 'input', () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => loadGifs(gifSearchIn.value.trim()), 400);
-  });
-
-  listen(gifUrlSend, 'click', async () => {
-    const u = safeUrl(gifUrlIn.value.trim());
-    if (!u) { toast('Valid https:// GIF link daalo.'); return; }
-    gifUrlIn.value = '';
-    gifModal.hidden = true;
-    if (activeSendHandler) await activeSendHandler({ mediaUrl: u, mediaType: 'gif' });
+    searchTimer = setTimeout(() => loadGifs(gifSearchIn.value.trim()), 500);
   });
 
   // ---------- Photo Upload Handler (Max 5 MB) ----------
   listen(photoBtn, 'click', () => { sheet.hidden = true; fileInput.click(); });
-  listen(gifBtn, 'click', () => { sheet.hidden = true; gifModal.hidden = false; loadGifs(''); });
+  listen(gifBtn, 'click', () => {
+    sheet.hidden = true;
+    gifSearchIn.value = '';
+    gifModal.hidden = false;
+    loadGifs('');
+  });
 
   listen(fileInput, 'change', async () => {
     const file = fileInput.files && fileInput.files[0];
@@ -394,4 +383,4 @@ export default function ({ getUser, on }) {
     style.remove(); sheet.remove(); gifModal.remove(); toastEl.remove(); lightbox.remove();
     delete window.DostoMedia;
   };
-}
+    }
