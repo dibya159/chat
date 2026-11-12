@@ -39,20 +39,21 @@ export default function ({ getUser, on }) {
   }
 
   // ---------- Dynamic Firebase Storage Loader ----------
-  function ensureStorage() {
+  function getStorageWithBucket(bucketName) {
+    const b = bucketName || (firebase.app().options || {}).storageBucket || 'chatappdibya.firebasestorage.app';
+    return firebase.app().storage(b.startsWith('gs://') ? b : 'gs://' + b);
+  }
+  function ensureStorage(bucketName) {
     if (window.firebase && typeof firebase.storage === 'function') {
-      return Promise.resolve(firebase.storage());
+      return Promise.resolve(getStorageWithBucket(bucketName));
     }
-    if (storagePromise) return storagePromise;
+    if (storagePromise) return storagePromise.then(() => getStorageWithBucket(bucketName));
     storagePromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js';
       s.onload = () => {
-        try {
-          if (typeof firebase.storage !== 'function') throw new Error('Storage SDK load nahi hua.');
-          const bucket = (firebase.app().options || {}).storageBucket || 'chatappdibya.firebasestorage.app';
-          resolve(firebase.app().storage(bucket.startsWith('gs://') ? bucket : 'gs://' + bucket));
-        } catch (e) { reject(e); }
+        if (typeof firebase.storage !== 'function') reject(new Error('Storage SDK load nahi hua.'));
+        else resolve(getStorageWithBucket(bucketName));
       };
       s.onerror = () => reject(new Error('Firebase Storage SDK load nahi ho paya.'));
       document.head.appendChild(s);
@@ -227,11 +228,18 @@ export default function ({ getUser, on }) {
     }
     try {
       toast('Uploading...');
-      const storage = await ensureStorage();
       const ext = (file.name.split('.').pop() || 'jpg').replace(/[^a-z0-9]/gi, '').slice(0, 6) || 'jpg';
       const path = `chatMedia/${me.uid}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
-      const ref = storage.ref(path);
-      await ref.put(file, { contentType: file.type });
+      let ref;
+      try {
+        const s1 = await ensureStorage('chatappdibya.firebasestorage.app');
+        ref = s1.ref(path);
+        await ref.put(file, { contentType: file.type });
+      } catch {
+        const s2 = await ensureStorage('chatappdibya.appspot.com');
+        ref = s2.ref(path);
+        await ref.put(file, { contentType: file.type });
+      }
       const url = await ref.getDownloadURL();
       const mediaType = file.type === 'image/gif' ? 'gif' : 'image';
       if (activeSendHandler) await activeSendHandler({ mediaUrl: url, mediaType, storagePath: path });
@@ -277,14 +285,19 @@ export default function ({ getUser, on }) {
   });
 
   // ---------- Delete Media Helper (RTDB + Storage) ----------
+  function deleteFromStorage(storagePath) {
+    if (!storagePath) return;
+    ensureStorage('chatappdibya.firebasestorage.app')
+      .then(s => s.ref(storagePath).delete())
+      .catch(() => ensureStorage('chatappdibya.appspot.com').then(s => s.ref(storagePath).delete()).catch(() => {}));
+  }
+
   async function deleteMediaMessage(refPath, storagePath) {
     if (!db) return;
     if (!confirm('Kya aap ye media delete karna chahte hain?')) return;
     try {
       await db.ref(refPath).remove();
-      if (storagePath) {
-        ensureStorage().then(s => s.ref(storagePath).delete().catch(() => {})).catch(() => {});
-      }
+      deleteFromStorage(storagePath);
       toast('Media delete ho gaya.');
     } catch (e) {
       toast('Delete nahi ho paya: ' + (e.message || 'Permission denied'));
@@ -343,7 +356,7 @@ export default function ({ getUser, on }) {
     attachBar: attachPlusToBar,
     canDelete: canDeleteMedia,
     openLightbox: url => { if (safeUrl(url)) { lightImg.src = url; lightbox.hidden = false; } },
-    deleteStorage: path => { if (path) ensureStorage().then(s => s.ref(path).delete().catch(() => {})).catch(() => {}); }
+    deleteStorage: deleteFromStorage
   };
 
   // ---------- Lifecycle ----------
