@@ -1,4 +1,4 @@
-/* Dosto ka Chat - Standalone Notification & Unread Badge System v1.0
+/* Dosto ka Chat - Standalone Notification & Unread Badge System v2.0
    Works 100% automatically with Firebase without touching existing files.
 */
 export default function initNotifications({ root, getUser, on }) {
@@ -39,7 +39,7 @@ export default function initNotifications({ root, getUser, on }) {
     .dosto-perm-toast {
       position: fixed;
       left: 50%;
-      bottom: 18px;
+      bottom: 72px;
       transform: translateX(-50%);
       z-index: 9999;
       background: rgba(14, 19, 38, 0.96);
@@ -53,6 +53,7 @@ export default function initNotifications({ root, getUser, on }) {
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
       font: 700 12px system-ui, sans-serif;
       backdrop-filter: blur(12px);
+      white-space: nowrap;
     }
     .dosto-perm-toast button {
       border: 0;
@@ -93,49 +94,68 @@ export default function initNotifications({ root, getUser, on }) {
     } catch (_) {}
   }
 
-  // 3. Push Notification Outside App (System Notification + Service Worker Fallback)
-  function askNotificationPermission() {
-    if (!('Notification' in window) || Notification.permission !== 'default') return;
-    if (document.querySelector('.dosto-perm-toast')) return;
-
-    const toast = document.createElement('div');
-    toast.className = 'dosto-perm-toast';
-    toast.innerHTML = `
-      <span>🔔 बाहर मैसेज अलर्ट पाने के लिए Allow करें</span>
-      <button type="button">Allow</button>
-    `;
-    toast.querySelector('button').onclick = async () => {
-      try { await Notification.requestPermission(); } catch (_) {}
-      toast.remove();
-    };
-    document.body.appendChild(toast);
-  }
-
+  // 3. Push Notification (Works both Inside & Outside App + Service Worker)
   function pushAlert(title, body, tag = 'dosto-alert') {
     playChime();
 
-    // Trigger system notification if user is in another tab or phone screen is minimized
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-      const options = {
-        body: String(body || ''),
-        icon: './icon-192.png',
-        badge: './icon-192.png',
-        tag,
-        renotify: true
-      };
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-      if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-        navigator.serviceWorker.ready
-          .then(reg => reg.showNotification(title, options))
-          .catch(() => {
+    const options = {
+      body: String(body || ''),
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: tag + '-' + Date.now(),
+      renotify: true
+    };
+
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg && reg.showNotification) {
+          reg.showNotification(title, options).catch(() => {
             try { new Notification(title, options); } catch (_) {}
           });
-      } else {
+        } else {
+          try { new Notification(title, options); } catch (_) {}
+        }
+      }).catch(() => {
+        try { new Notification(title, options); } catch (_) {}
+      });
+    } else {
+      try {
+        const n = new Notification(title, options);
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (_) {}
+    }
+  }
+
+  // Expose global helper for manual testing if ever needed
+  window.DostoNotify = {
+    notify: (title = 'Test Alert 🔔', body = 'Notification ekdam mast kaam kar raha hai boss!') => {
+      pushAlert(title, body, 'test');
+    }
+  };
+
+  function askNotificationPermission() {
+    if (!('Notification' in window)) return;
+    if (document.querySelector('.dosto-perm-toast')) return;
+
+    if (Notification.permission === 'default') {
+      const toast = document.createElement('div');
+      toast.className = 'dosto-perm-toast';
+      toast.innerHTML = `
+        <span>🔔 मैसेज अलर्ट पाने के लिए Allow करें</span>
+        <button type="button">Allow</button>
+      `;
+      toast.querySelector('button').onclick = async () => {
         try {
-          const n = new Notification(title, options);
-          n.onclick = () => { window.focus(); n.close(); };
+          const perm = await Notification.requestPermission();
+          if (perm === 'granted') {
+            pushAlert('Dosto ka Chat 🔔', 'Notifications chalu ho gaye boss!', 'welcome');
+          }
         } catch (_) {}
-      }
+        toast.remove();
+      };
+      document.body.appendChild(toast);
     }
   }
 
@@ -215,16 +235,16 @@ export default function initNotifications({ root, getUser, on }) {
     if (!me || !me.uid || !window.firebase || !window.firebase.database) return;
 
     const db = window.firebase.database();
-    const bootTime = Date.now();
     const pairId = (a, b) => [String(a), String(b)].sort().join('__');
 
-    // A) Main Public Group Chat Messages
+    // A) Main Public Group Chat Messages (Ignore existing initial snapshot, alert on every new one)
     const chatRef = db.ref('messages').limitToLast(1);
+    let chatReady = false;
+    chatRef.once('value', () => { chatReady = true; });
     listenRef(chatRef, 'child_added', snap => {
+      if (!chatReady) return;
       const m = snap.val();
       if (!m) return;
-      const ts = Number(m.ts || m.timestamp || m.time || 0);
-      if (ts && ts < bootTime) return;
       const senderUid = m.uid || m.senderUid || m.userId;
       if (senderUid === me.uid) return; // Ignore own message
 
@@ -254,7 +274,7 @@ export default function initNotifications({ root, getUser, on }) {
       knownReqs = new Set(keys);
     });
 
-    // C) Friends List -> Watch Private DM Threads & Friend Online Status
+    // C) Friends List -> Watch Private DM Threads
     const friendsRef = db.ref('dmFriends/' + me.uid);
     listenRef(friendsRef, 'value', snap => {
       const friends = snap.val() || {};
@@ -263,11 +283,13 @@ export default function initNotifications({ root, getUser, on }) {
 
         const pid = pairId(me.uid, friendUid);
         const msgRef = db.ref('dmThreads/' + pid + '/messages').limitToLast(1);
+        let dmReady = false;
+        msgRef.once('value', () => { dmReady = true; });
+
         const onDm = msgRef.on('child_added', mSnap => {
+          if (!dmReady) return;
           const m = mSnap.val();
-          if (!m) return;
-          const ts = Number(m.ts || m.timestamp || 0);
-          if (ts < bootTime || m.uid === me.uid) return;
+          if (!m || m.uid === me.uid) return;
 
           const sender = m.name || friends[friendUid]?.name || 'Dost';
           const text = m.unsent ? 'Message unsent' : (m.text || (m.voice ? '🎤 Voice message' : '💬 Private message'));
@@ -300,12 +322,12 @@ export default function initNotifications({ root, getUser, on }) {
 
     // E) New Stories Added
     const storiesRef = db.ref('stories').limitToLast(1);
+    let storiesReady = false;
+    storiesRef.once('value', () => { storiesReady = true; });
     listenRef(storiesRef, 'child_added', snap => {
+      if (!storiesReady) return;
       const st = snap.val();
-      if (!st) return;
-      const ts = Number(st.ts || st.timestamp || st.createdAt || 0);
-      if (ts && ts < bootTime) return;
-      if (st.uid === me.uid) return;
+      if (!st || st.uid === me.uid) return;
 
       const author = st.username || st.name || 'Dost';
       addBadge('stories', 1);
