@@ -1,12 +1,6 @@
 {
   "features": [
     {
-      "id": "pool",
-      "title": "",
-      "module": "./features/pool/feature.js?v=1",
-      "requiresLogin": true
-    },
-    {
       "id": "leaderboard",
       "title": "Leaderboard",
       "module": "./features/leaderboard/feature.js",
