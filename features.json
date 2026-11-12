@@ -57,7 +57,7 @@
     {
       "id": "notifications",
       "title": "",
-      "module": "./features/notifications/feature.js?v=1",
+      "module": "./features/notifications/feature.js?v=2",
       "requiresLogin": true
     }
   ]
