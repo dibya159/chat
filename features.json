@@ -63,7 +63,7 @@
     {
   "id": "media-sharing",
   "title": "Media Sharing",
-  "module": "./features/media-sharing/feature.js?v=1",
+  "module": "./features/media-sharing/feature.js?v=2",
   "requiresLogin": true
     }
   ]
