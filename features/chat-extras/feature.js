@@ -1,16 +1,199 @@
-
 /* Dosto ka Chat - Chat Extras
-1. Reply: har message ke bagal mein chhota ↩ arrow, reply quote bubble ke andar dikhta hai.
-2. Typing: WhatsApp jaisa "bablu typing..." bubble (3 dots) chat ke neeche.index.html ko chhedna nahi padta. */export default function ({ root, getUser, on }) {const TAG_RE = /^⟦r:[A-Za-z0-9_-]+⟧/;const $ = id => document.getElementById(id);const app = $('app'), msgsBox = $('msgs'), bar = $('bar'), inp = $('text');if (!app || !msgsBox || !bar || !inp) throw new Error('Chat Extras: index.html ke elements nahi mile.');const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };const stripTag = t => String(t || '').replace(TAG_RE, '');const TS = () => firebase.database.ServerValue.TIMESTAMP;
-let me = null, db = null, myName = '', msgs = new Map(), typingMap = {}, offset = 0;let replyTo = null, offs = [], tpShown = false, lastSent = 0, idleT = 0, active = false, tick = 0;const uiOffs = [];const listen = (t, ev, fn, opts) => { if (!t) return; t.addEventListener(ev, fn, opts); uiOffs.push(() => t.removeEventListener(ev, fn, opts)); };
-// ---------- CSS ----------const style = el('style');style.textContent = .rp-btn{flex:none;align-self:center;width:26px!important;height:26px!important;min-width:0!important;padding:0!important;border-radius:50%!important;border:0!important;background:#ffffff14!important;box-shadow:none!important;color:#aeb9e8!important;font-size:14px!important;line-height:1;cursor:pointer;opacity:.85} .rp-quote{display:block;border-left:3px solid #8f9bff;background:#00000033;border-radius:6px;padding:4px 8px;margin:2px 0 5px;font-size:12px;cursor:pointer;max-width:100%} .rp-quote b{display:block;margin:0!important;font-size:11px;color:#c2caff} .rp-quote span{display:block;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px} .rp-flash{animation:rpflash 2.2s ease} @keyframes rpflash{0%,65%{box-shadow:0 0 0 3px #ffd27a}100%{box-shadow:0 0 0 0 #ffd27a00}} .rp-bar{flex:none;display:flex;align-items:center;gap:8px;padding:7px 12px;background:#151e30;border-top:1px solid var(--line);border-left:3px solid #8f9bff;font-size:12px;color:#c2caff} .rp-bar[hidden],.tp-bubble[hidden]{display:none} .rp-bt{flex:1;min-width:0}.rp-bt b{display:block;font-size:11px} .rp-sn{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .rp-x{background:none!important;border:0!important;box-shadow:none!important;color:#fff!important;padding:4px 8px!important;font-size:16px!important} .tp-bubble{position:absolute;left:12px;z-index:5;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:15px 15px 15px 5px;background:#1a2436;border:1px solid var(--line);font-size:12px;color:#c2caff;pointer-events:none;max-width:80%} .tp-dots{display:inline-flex;gap:3px} .tp-dots i{width:5px;height:5px;border-radius:50%;background:#9fb0ff;animation:tpb 1s infinite} .tp-dots i:nth-child(2){animation-delay:.15s}.tp-dots i:nth-child(3){animation-delay:.3s} @keyframes tpb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}};root.appendChild(style);
-// ---------- shell ----------const rbar = el('div', 'rp-bar'); rbar.hidden = true;const rbt = el('div', 'rp-bt'), rx = el('button', 'rp-x', '✕'); rx.type = 'button';rbar.append(rbt, rx);bar.before(rbar);const tpEl = el('div', 'tp-bubble'); tpEl.hidden = true;const tpText = el('span'), dots = el('span', 'tp-dots'); dots.append(el('i'), el('i'), el('i'));tpEl.append(tpText, dots);app.appendChild(tpEl);
-// ---------- reply ----------function startReply(key) {const m = msgs.get(key);let user = m && m.user, text = m && stripTag(m.text);if (!m) {const art = msgsBox.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');const b = art && art.querySelector(':scope > b'), c = art && art.querySelector(':scope > span:not(.stamp)');user = (b && b.textContent) || 'Message'; text = c ? stripTag(c.textContent) : '';}replyTo = { key, user: user || 'Member', text: String(text || '').slice(0, 80) };rbt.replaceChildren(el('b', '', '↩ Reply to ' + replyTo.user), el('div', 'rp-sn', replyTo.text));rbar.hidden = false; inp.focus();}function clearReply() { replyTo = null; rbar.hidden = true; }listen(rx, 'click', clearReply);
-// send se pehle tag laga do (input ki value turant wapas restore ho jati hai)function onSendCapture(e) {const isSend = e.type === 'click' && e.target.closest && e.target.closest('#send');const isEnter = e.type === 'keydown' && e.key === 'Enter' && e.target === inp;if (!isSend && !isEnter) return;setTyping(false);if (!replyTo) return;const orig = inp.value;if (!orig.trim()) return;const tagged = '⟦r:' + replyTo.key + '⟧' + orig;inp.value = tagged;clearReply();setTimeout(() => { if (inp.value === tagged) inp.value = orig; }, 0);}listen(bar, 'click', onSendCapture, true);listen(bar, 'keydown', onSendCapture, true);
-function jumpTo(key) {const art = msgsBox.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');if (!art) return;art.scrollIntoView({ block: 'center', behavior: 'smooth' });art.classList.add('rp-flash');setTimeout(() => art.classList.remove('rp-flash'), 2300);}
-function decorate(row) {if (row.dataset.ce) return;row.dataset.ce = '1';const art = row.querySelector('article.msg');if (!art) return;const key = art.dataset.key;const content = art.querySelector(':scope > span:not(.stamp)');if (content) {const fc = content.firstChild;const mm = fc && fc.nodeType === 3 ? fc.nodeValue.match(TAG_RE) : null;if (mm) {const rk = mm[0].slice(3, -1);fc.nodeValue = fc.nodeValue.slice(mm[0].length);const o = msgs.get(rk);const q = el('div', 'rp-quote');q.append(el('b', '', o ? (o.user || 'Member') : 'Original message'), el('span', '', o ? stripTag(o.text).slice(0, 80) : 'Ab chat mein loaded nahi hai'));if (!o) q.dataset.rk = rk;q.addEventListener('click', () => jumpTo(rk));art.insertBefore(q, content);}}const b = el('button', 'rp-btn', '↩'); b.type = 'button'; b.title = 'Reply'; b.setAttribute('aria-label', 'Reply');b.addEventListener('click', () => startReply(key));row.appendChild(b);}const mo = new MutationObserver(list => list.forEach(r => r.addedNodes.forEach(n => {if (n.nodeType === 1 && n.classList.contains('msg-row')) decorate(n);})));mo.observe(msgsBox, { childList: true });msgsBox.querySelectorAll('.msg-row').forEach(decorate);
-// ---------- typing ----------function setTyping(onFlag) {if (!me || !db) return;const r = db.ref('typing/' + me.uid);if (onFlag) {const now = Date.now();if (now - lastSent > 2500) { lastSent = now; r.set({ n: myName, t: TS() }).catch(() => {}); }clearTimeout(idleT); idleT = setTimeout(() => setTyping(false), 4000); active = true;} else {clearTimeout(idleT);if (active) { active = false; lastSent = 0; r.remove().catch(() => {}); }}}listen(inp, 'input', () => setTyping(inp.value.length > 0));listen(inp, 'blur', () => setTyping(false));
-function placeTyping() {const a = app.getBoundingClientRect(), m = msgsBox.getBoundingClientRect();tpEl.style.bottom = Math.max(0, a.bottom - m.bottom + 6) + 'px';}function refreshTyping() {const now = Date.now() + offset, names = [];Object.keys(typingMap).forEach(uid => {const t = typingMap[uid];if (me && uid !== me.uid && t && t.n && Number(t.t) > now - 7000) names.push(String(t.n));});if (!names.length) {if (tpShown) { msgsBox.style.paddingBottom = ''; tpShown = false; }tpEl.hidden = true; return;}tpText.textContent = names.length === 1 ? names[0] + ' typing' : names.length === 2 ? names[0] + ' aur ' + names[1] + ' typing' : names.length + ' log typing';if (!tpShown) {const near = msgsBox.scrollHeight - msgsBox.scrollTop - msgsBox.clientHeight < 80;msgsBox.style.paddingBottom = ((parseFloat(getComputedStyle(msgsBox).paddingBottom) || 0) + 36) + 'px';tpShown = true;if (near) msgsBox.scrollTop = msgsBox.scrollHeight;}placeTyping(); tpEl.hidden = false;}
-// ---------- firebase ----------function attach(ref, evt, cb) { ref.on(evt, cb, err => console.warn('[ChatExtras]', err && err.message)); offs.push(() => ref.off(evt, cb)); }function start(user) {stop();if (!user || !window.firebase || !firebase.database) return;me = user; db = firebase.database(); myName = user.username;attach(db.ref('.info/serverTimeOffset'), 'value', s => { offset = Number(s.val()) || 0; });attach(db.ref('users/' + me.uid), 'value', s => { const u = s.val() || {}; myName = u.chatName || u.username || user.username; });const mref = db.ref('messages').limitToLast(300);attach(mref, 'child_added', s => { const m = s.val(); if (m) msgs.set(s.key, m); });attach(mref, 'child_removed', s => { msgs.delete(s.key); });mref.once('value').then(() => msgsBox.querySelectorAll('.rp-quote[data-rk]').forEach(q => {const o = msgs.get(q.dataset.rk); if (!o) return;q.firstChild.textContent = o.user || 'Member'; q.lastChild.textContent = stripTag(o.text).slice(0, 80); delete q.dataset.rk;})).catch(() => {});attach(db.ref('typing'), 'value', s => { typingMap = s.val() || {}; refreshTyping(); });try { db.ref('typing/' + me.uid).onDisconnect().remove(); } catch () {}tick = setInterval(refreshTyping, 2000);}function stop() {setTyping(false);offs.forEach(f => { try { f(); } catch () {} }); offs = [];clearInterval(tick); clearTimeout(idleT);me = null; db = null; msgs = new Map(); typingMap = {};clearReply(); refreshTyping();}
-if (getUser()) start(getUser());const offLogin = on('login', u => start(u));const offLogout = on('logout', () => stop());
-return () => {offLogin(); offLogout(); stop(); mo.disconnect();uiOffs.forEach(f => { try { f(); } catch (_) {} });[style, rbar, tpEl].forEach(n => n.remove());msgsBox.querySelectorAll('.rp-btn,.rp-quote').forEach(n => n.remove());};}
+   1) Reply: har message ke bagal mein chhota \u21A9 arrow, reply quote bubble ke andar dikhta hai.
+   2) Typing: WhatsApp jaisa "bablu typing..." bubble (3 dots) chat ke neeche.
+   index.html ko chhedna nahi padta. */
+export default function ({ root, getUser, on }) {
+  const TAG_RE = /^\u27E6r:[A-Za-z0-9_-]+\u27E7/;
+  const $ = id => document.getElementById(id);
+  const app = $('app'), msgsBox = $('msgs'), bar = $('bar'), inp = $('text');
+  if (!app || !msgsBox || !bar || !inp) throw new Error('Chat Extras: index.html ke elements nahi mile.');
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const stripTag = t => String(t || '').replace(TAG_RE, '');
+  const TS = () => firebase.database.ServerValue.TIMESTAMP;
+
+  let me = null, db = null, myName = '', msgs = new Map(), typingMap = {}, offset = 0;
+  let replyTo = null, offs = [], tpShown = false, lastSent = 0, idleT = 0, active = false, tick = 0;
+  const uiOffs = [];
+  const listen = (t, ev, fn, opts) => { if (!t) return; t.addEventListener(ev, fn, opts); uiOffs.push(() => t.removeEventListener(ev, fn, opts)); };
+
+  // ---------- CSS ----------
+  const style = el('style');
+  style.textContent = `
+  .rp-btn{flex:none;align-self:center;width:26px!important;height:26px!important;min-width:0!important;padding:0!important;border-radius:50%!important;border:0!important;background:#ffffff14!important;box-shadow:none!important;color:#aeb9e8!important;font-size:14px!important;line-height:1;cursor:pointer;opacity:.85}
+  .rp-quote{display:block;border-left:3px solid #8f9bff;background:#00000033;border-radius:6px;padding:4px 8px;margin:2px 0 5px;font-size:12px;cursor:pointer;max-width:100%}
+  .rp-quote b{display:block;margin:0!important;font-size:11px;color:#c2caff}
+  .rp-quote span{display:block;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  .rp-flash{animation:rpflash 2.2s ease}
+  @keyframes rpflash{0%,65%{box-shadow:0 0 0 3px #ffd27a}100%{box-shadow:0 0 0 0 #ffd27a00}}
+  .rp-bar{flex:none;display:flex;align-items:center;gap:8px;padding:7px 12px;background:#151e30;border-top:1px solid var(--line);border-left:3px solid #8f9bff;font-size:12px;color:#c2caff}
+  .rp-bar[hidden],.tp-bubble[hidden]{display:none}
+  .rp-bt{flex:1;min-width:0}.rp-bt b{display:block;font-size:11px}
+  .rp-sn{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rp-x{background:none!important;border:0!important;box-shadow:none!important;color:#fff!important;padding:4px 8px!important;font-size:16px!important}
+  .tp-bubble{position:absolute;left:12px;z-index:5;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:15px 15px 15px 5px;background:#1a2436;border:1px solid var(--line);font-size:12px;color:#c2caff;pointer-events:none;max-width:80%}
+  .tp-dots{display:inline-flex;gap:3px}
+  .tp-dots i{width:5px;height:5px;border-radius:50%;background:#9fb0ff;animation:tpb 1s infinite}
+  .tp-dots i:nth-child(2){animation-delay:.15s}.tp-dots i:nth-child(3){animation-delay:.3s}
+  @keyframes tpb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}`;
+  root.appendChild(style);
+
+  // ---------- shell ----------
+  const rbar = el('div', 'rp-bar'); rbar.hidden = true;
+  const rbt = el('div', 'rp-bt'), rx = el('button', 'rp-x', '\u2715'); rx.type = 'button';
+  rbar.append(rbt, rx);
+  bar.before(rbar);
+  const tpEl = el('div', 'tp-bubble'); tpEl.hidden = true;
+  const tpText = el('span'), dots = el('span', 'tp-dots'); dots.append(el('i'), el('i'), el('i'));
+  tpEl.append(tpText, dots);
+  app.appendChild(tpEl);
+
+  // ---------- reply ----------
+  function startReply(key) {
+    const m = msgs.get(key);
+    let user = m && m.user, text = m && stripTag(m.text);
+    if (!m) {
+      const art = msgsBox.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
+      const b = art && art.querySelector(':scope > b'), c = art && art.querySelector(':scope > span:not(.stamp)');
+      user = (b && b.textContent) || 'Message'; text = c ? stripTag(c.textContent) : '';
+    }
+    replyTo = { key, user: user || 'Member', text: String(text || '').slice(0, 80) };
+    rbt.replaceChildren(el('b', '', '\u21A9 Reply to ' + replyTo.user), el('div', 'rp-sn', replyTo.text));
+    rbar.hidden = false; inp.focus();
+  }
+  function clearReply() { replyTo = null; rbar.hidden = true; }
+  listen(rx, 'click', clearReply);
+
+  // send se pehle tag laga do (input ki value turant wapas restore ho jati hai)
+  function onSendCapture(e) {
+    const isSend = e.type === 'click' && e.target.closest && e.target.closest('#send');
+    const isEnter = e.type === 'keydown' && e.key === 'Enter' && e.target === inp;
+    if (!isSend && !isEnter) return;
+    setTyping(false);
+    if (!replyTo) return;
+    const orig = inp.value;
+    if (!orig.trim()) return;
+    const tagged = '\u27E6r:' + replyTo.key + '\u27E7' + orig;
+    inp.value = tagged;
+    clearReply();
+    setTimeout(() => { if (inp.value === tagged) inp.value = orig; }, 0);
+  }
+  listen(bar, 'click', onSendCapture, true);
+  listen(bar, 'keydown', onSendCapture, true);
+
+  function jumpTo(key) {
+    const art = msgsBox.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
+    if (!art) return;
+    art.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    art.classList.add('rp-flash');
+    setTimeout(() => art.classList.remove('rp-flash'), 2300);
+  }
+
+  function decorate(row) {
+    if (row.dataset.ce) return;
+    row.dataset.ce = '1';
+    const art = row.querySelector('article.msg');
+    if (!art) return;
+    const key = art.dataset.key;
+    const content = art.querySelector(':scope > span:not(.stamp)');
+    if (content) {
+      const fc = content.firstChild;
+      const mm = fc && fc.nodeType === 3 ? fc.nodeValue.match(TAG_RE) : null;
+      if (mm) {
+        const rk = mm[0].slice(3, -1);
+        fc.nodeValue = fc.nodeValue.slice(mm[0].length);
+        const o = msgs.get(rk);
+        const q = el('div', 'rp-quote');
+        q.append(el('b', '', o ? (o.user || 'Member') : 'Original message'), el('span', '', o ? stripTag(o.text).slice(0, 80) : 'Ab chat mein loaded nahi hai'));
+        if (!o) q.dataset.rk = rk;
+        q.addEventListener('click', () => jumpTo(rk));
+        art.insertBefore(q, content);
+      }
+    }
+    const b = el('button', 'rp-btn', '\u21A9'); b.type = 'button'; b.title = 'Reply'; b.setAttribute('aria-label', 'Reply');
+    b.addEventListener('click', () => startReply(key));
+    row.appendChild(b);
+  }
+  const mo = new MutationObserver(list => list.forEach(r => r.addedNodes.forEach(n => {
+    if (n.nodeType === 1 && n.classList.contains('msg-row')) decorate(n);
+  })));
+  mo.observe(msgsBox, { childList: true });
+  msgsBox.querySelectorAll('.msg-row').forEach(decorate);
+
+  // ---------- typing ----------
+  function setTyping(onFlag) {
+    if (!me || !db) return;
+    const r = db.ref('typing/' + me.uid);
+    if (onFlag) {
+      const now = Date.now();
+      if (now - lastSent > 2500) { lastSent = now; r.set({ n: myName, t: TS() }).catch(() => {}); }
+      clearTimeout(idleT); idleT = setTimeout(() => setTyping(false), 4000); active = true;
+    } else {
+      clearTimeout(idleT);
+      if (active) { active = false; lastSent = 0; r.remove().catch(() => {}); }
+    }
+  }
+  listen(inp, 'input', () => setTyping(inp.value.length > 0));
+  listen(inp, 'blur', () => setTyping(false));
+
+  function placeTyping() {
+    const a = app.getBoundingClientRect(), m = msgsBox.getBoundingClientRect();
+    tpEl.style.bottom = Math.max(0, a.bottom - m.bottom + 6) + 'px';
+  }
+  function refreshTyping() {
+    const now = Date.now() + offset, names = [];
+    Object.keys(typingMap).forEach(uid => {
+      const t = typingMap[uid];
+      if (me && uid !== me.uid && t && t.n && Number(t.t) > now - 7000) names.push(String(t.n));
+    });
+    if (!names.length) {
+      if (tpShown) { msgsBox.style.paddingBottom = ''; tpShown = false; }
+      tpEl.hidden = true; return;
+    }
+    tpText.textContent = names.length === 1 ? names[0] + ' typing' : names.length === 2 ? names[0] + ' aur ' + names[1] + ' typing' : names.length + ' log typing';
+    if (!tpShown) {
+      const near = msgsBox.scrollHeight - msgsBox.scrollTop - msgsBox.clientHeight < 80;
+      msgsBox.style.paddingBottom = ((parseFloat(getComputedStyle(msgsBox).paddingBottom) || 0) + 36) + 'px';
+      tpShown = true;
+      if (near) msgsBox.scrollTop = msgsBox.scrollHeight;
+    }
+    placeTyping(); tpEl.hidden = false;
+  }
+
+  // ---------- firebase ----------
+  function attach(ref, evt, cb) { ref.on(evt, cb, err => console.warn('[ChatExtras]', err && err.message)); offs.push(() => ref.off(evt, cb)); }
+  function start(user) {
+    stop();
+    if (!user || !window.firebase || !firebase.database) return;
+    me = user; db = firebase.database(); myName = user.username;
+    attach(db.ref('.info/serverTimeOffset'), 'value', s => { offset = Number(s.val()) || 0; });
+    attach(db.ref('users/' + me.uid), 'value', s => { const u = s.val() || {}; myName = u.chatName || u.username || user.username; });
+    const mref = db.ref('messages').limitToLast(300);
+    attach(mref, 'child_added', s => { const m = s.val(); if (m) msgs.set(s.key, m); });
+    attach(mref, 'child_removed', s => { msgs.delete(s.key); });
+    mref.once('value').then(() => msgsBox.querySelectorAll('.rp-quote[data-rk]').forEach(q => {
+      const o = msgs.get(q.dataset.rk); if (!o) return;
+      q.firstChild.textContent = o.user || 'Member'; q.lastChild.textContent = stripTag(o.text).slice(0, 80); delete q.dataset.rk;
+    })).catch(() => {});
+    attach(db.ref('typing'), 'value', s => { typingMap = s.val() || {}; refreshTyping(); });
+    try { db.ref('typing/' + me.uid).onDisconnect().remove(); } catch (_) {}
+    tick = setInterval(refreshTyping, 2000);
+  }
+  function stop() {
+    setTyping(false);
+    offs.forEach(f => { try { f(); } catch (_) {} }); offs = [];
+    clearInterval(tick); clearTimeout(idleT);
+    me = null; db = null; msgs = new Map(); typingMap = {};
+    clearReply(); refreshTyping();
+  }
+
+  if (getUser()) start(getUser());
+  const offLogin = on('login', u => start(u));
+  const offLogout = on('logout', () => stop());
+
+  return () => {
+    offLogin(); offLogout(); stop(); mo.disconnect();
+    uiOffs.forEach(f => { try { f(); } catch (_) {} });
+    [style, rbar, tpEl].forEach(n => n.remove());
+    msgsBox.querySelectorAll('.rp-btn,.rp-quote').forEach(n => n.remove());
+  };
+}
