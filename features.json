@@ -33,7 +33,13 @@
     {
       "id": "dm",
       "title": "",
-      "module": "./features/dm/feature.js?v=3",
+      "module": "./features/dm/feature.js?v=4",
+      "requiresLogin": true
+    },
+    {
+      "id": "chat-read-receipts",
+      "title": "Seen By and Read Receipts",
+      "module": "./features/chat-read-receipts/feature.js?v=1",
       "requiresLogin": true
     },
     {
