@@ -65,6 +65,12 @@
   "title": "Media Sharing",
   "module": "./features/media-sharing/feature.js?v=4",
   "requiresLogin": true
+    },
+    {
+  "id": "announcements",
+  "title": "Announcements",
+  "module": "./features/announcements/feature.js?v=1",
+  "requiresLogin": true
     }
   ]
 }
