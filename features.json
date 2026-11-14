@@ -45,7 +45,7 @@
     {
       "id": "games",
       "title": "",
-      "module": "./features/games/feature.js?v=2",
+      "module": "./features/games/feature.js?v=3",
       "requiresLogin": true
     },
     {
